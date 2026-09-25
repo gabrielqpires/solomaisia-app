@@ -582,14 +582,16 @@ startBtn.addEventListener('click', async () => {
     loader.start();
 
     console.log('[Solo+IA] 1️⃣ Pedindo auth ao Wix...');
-    const auth = await askAuth();
+    const auth = await askAuth(15000);
     console.log('[Solo+IA] 2️⃣ Auth recebido:', auth);
 
     const fd = new FormData();
     fd.append('file', f, f.name);
     fd.append('culture', culture);
-    // Identidade assinada pelo backend do Wix (o n8n confere a assinatura)
-    const up = auth?.upload;
+    // Identidade assinada pelo backend do Wix (o n8n confere a assinatura).
+    // Se a resposta atrasar, usa a assinatura enviada no carregamento da página, se ainda válida.
+    const cached = window.SoloiaAuth?.upload;
+    const up = auth?.upload || (cached && cached.exp > Date.now() + 60000 ? cached : null);
     if (up?.memberId) {
       fd.append('memberId', up.memberId);
       fd.append('memberEmail', up.email || '');
