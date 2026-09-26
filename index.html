@@ -162,6 +162,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .h-data{grid-area:data;color:var(--muted);font-size:13px;align-self:center}
   .historico-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .historico-rel{max-width:100%}
+  .comprar-intro{margin:0 0 18px;font-size:15px}
+  .comprar-intro strong{color:#fff}
+  .pacotes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .pacote{display:flex;flex-direction:column;align-items:center;gap:2px;padding:22px 12px;background:#0c1222;border:1.5px solid #1f3152;border-radius:16px;box-shadow:none;color:#e9efff;cursor:pointer;font-weight:400}
+  .pacote:hover{border-color:#2a7fff}
+  .pacote[aria-checked="true"]{border-color:#2a7fff;background:#0f1d3a;box-shadow:0 0 0 3px rgba(42,127,255,.25)}
+  .pacote-cred{font-size:34px;font-weight:800;line-height:1.1;color:#fff}
+  .pacote-rot{color:#a9b8d6;font-size:14px}
+  .pacote-preco{margin-top:10px;font-size:20px;font-weight:700;color:#9fe0b8}
+  .pacote-sub{color:var(--muted);font-size:12.5px}
+  .comprar-acao{display:flex;justify-content:center;margin-top:20px}
+  .comprar-acao button{min-width:260px}
+  .comprar-status{margin-top:16px;padding:14px 16px;border-radius:12px;background:#0f1a31;border:1px solid #24406e;text-align:center;font-size:15px}
+  .comprar-status.ok{border-color:#1f5a3c;background:#0f2a1d;color:#bff0cf}
+  .comprar-status.erro{border-color:#6b2a2a;background:#2a1212;color:#ffc9c9}
+  .comprar-nota{text-align:center;font-size:13px;margin-top:18px}
+  @media (max-width:600px){
+    .pacotes{grid-template-columns:1fr}
+    .pacote{flex-direction:row;flex-wrap:wrap;justify-content:space-between;padding:16px 18px;gap:0 8px}
+    .pacote-cred{font-size:26px}
+    .pacote-preco{margin-top:0;margin-left:auto}
+    .pacote-sub{width:100%;text-align:left}
+  }
 
   /* Créditos no topo direito */
   #creditos-container{
@@ -501,6 +524,33 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     <div id="historicoLista" class="historico-lista"></div>
     <div id="historicoVer" hidden></div>
+  </section>
+
+  <section id="comprar" class="historico comprar" hidden>
+    <div class="historico-topo">
+      <h2>Comprar créditos</h2>
+      <button type="button" id="comprarVoltar" class="botao-sec">Voltar</button>
+    </div>
+    <p class="muted comprar-intro">Você tem <strong id="comprarSaldo">—</strong> créditos. Cada interpretação completa usa 16 créditos; a leitura do laudo não usa.</p>
+    <div class="pacotes" role="radiogroup" aria-label="Pacotes de créditos">
+      <button type="button" class="pacote" role="radio" aria-checked="false" data-pacote="p50" data-creditos="50" data-preco="14,99">
+        <span class="pacote-cred">50</span><span class="pacote-rot">créditos</span>
+        <span class="pacote-preco">R$ 14,99</span><span class="pacote-sub">até 3 interpretações</span>
+      </button>
+      <button type="button" class="pacote" role="radio" aria-checked="false" data-pacote="p150" data-creditos="150" data-preco="24,99">
+        <span class="pacote-cred">150</span><span class="pacote-rot">créditos</span>
+        <span class="pacote-preco">R$ 24,99</span><span class="pacote-sub">até 9 interpretações</span>
+      </button>
+      <button type="button" class="pacote" role="radio" aria-checked="false" data-pacote="p300" data-creditos="300" data-preco="49,99">
+        <span class="pacote-cred">300</span><span class="pacote-rot">créditos</span>
+        <span class="pacote-preco">R$ 49,99</span><span class="pacote-sub">até 18 interpretações</span>
+      </button>
+    </div>
+    <div class="comprar-acao">
+      <button type="button" id="btnComprar" disabled>Selecione um pacote</button>
+    </div>
+    <div id="comprarStatus" class="comprar-status" role="status" hidden></div>
+    <p class="muted comprar-nota">Pagamento pelo Mercado Pago. Precisa de mais créditos? Fale com a gente.</p>
   </section>
 
   <footer class="site-footer" aria-hidden="true"></footer>
@@ -1178,7 +1228,7 @@ function montarRelatorio(el, texto, cultura) {
 }
 
 // Site proprio (fora do Wix): barra do topo (marca, creditos, menu da conta), aviso de login e Minhas analises
-const LINK_CREDITOS = 'https://www.solomaisia.com.br/creditos';
+const LINK_CREDITOS = './?creditos=1';
 const ICONE_GOOGLE = '<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
 
 async function iniciarConta() {
@@ -1253,21 +1303,28 @@ async function iniciarConta() {
   });
 
   const fmt = iso => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
-  const guardados = partes.map(el => el ? el.style.display : '');
-  let aberto = false;
-  function fecharHistorico() {
-    hist.hidden = true;
-    aberto = false;
-    partes.forEach((el, i) => { if (el) el.style.display = guardados[i]; });
+  const comprar = document.getElementById('comprar');
+  let guardados = null;
+  // nome: null (app), 'historico' ou 'comprar'
+  function mostrarVista(nome) {
+    if (nome && !guardados) {
+      guardados = partes.map(el => el ? el.style.display : '');
+      partes.forEach(el => { if (el) el.style.display = 'none'; });
+    }
+    if (!nome && guardados) {
+      partes.forEach((el, i) => { if (el) el.style.display = guardados[i]; });
+      guardados = null;
+    }
+    hist.hidden = nome !== 'historico';
+    comprar.hidden = nome !== 'comprar';
+    try { window.scrollTo({ top: 0 }); } catch (_) {}
   }
+  function fecharHistorico() { mostrarVista(null); }
   async function abrirLista() {
-    if (!aberto) partes.forEach((el, i) => { if (el) { guardados[i] = el.style.display; el.style.display = 'none'; } });
-    aberto = true;
-    hist.hidden = false;
+    mostrarVista('historico');
     ver.hidden = true; ver.innerHTML = '';
     lista.hidden = false;
     lista.innerHTML = '<p class="muted">Carregando…</p>';
-    try { window.scrollTo({ top: 0 }); } catch (_) {}
     try {
       const itens = await window.SoloiaConta.listar();
       if (!itens.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhuma análise ainda.</p><p class="muted">As interpretações que você gerar aparecem aqui.</p></div>'; return; }
@@ -1298,6 +1355,127 @@ async function iniciarConta() {
   });
   document.getElementById('btnHistorico').addEventListener('click', abrirLista);
   document.getElementById('historicoVoltar').addEventListener('click', fecharHistorico);
+
+  // --- Comprar creditos
+  const PENDENTE = 'soloia:pagamentoPendente';
+  const saldoEl = document.getElementById('comprarSaldo');
+  const pacotes = [...comprar.querySelectorAll('.pacote')];
+  const btnComprar = document.getElementById('btnComprar');
+  const statusEl = document.getElementById('comprarStatus');
+  let escolhido = null;
+  let esperando = false;
+  let ciclo = 0;  // cancela o acompanhamento anterior
+  const textoBotao = () => escolhido ? `Comprar ${escolhido.dataset.creditos} créditos por R$ ${escolhido.dataset.preco}` : 'Selecione um pacote';
+  function status(msg, tipo) {
+    statusEl.hidden = !msg;
+    statusEl.className = 'comprar-status' + (tipo ? ' ' + tipo : '');
+    statusEl.textContent = msg || '';
+  }
+  async function atualizarSaldo(forcar) {
+    const a = await window.SoloiaConta.sessao({ forcar });
+    if (a.isLogged) { renderCreditos(a.creditos); saldoEl.textContent = Number(a.creditos || 0).toLocaleString('pt-BR'); }
+    return a;
+  }
+  function abrirComprar() {
+    mostrarVista('comprar');
+    saldoEl.textContent = Number(window.currentCreditos ?? auth.creditos ?? 0).toLocaleString('pt-BR');
+  }
+  pacotes.forEach(b => b.addEventListener('click', () => {
+    if (esperando) return;
+    escolhido = b;
+    pacotes.forEach(x => x.setAttribute('aria-checked', String(x === b)));
+    btnComprar.disabled = false;
+    btnComprar.textContent = textoBotao();
+  }));
+
+  // Depois do pagamento: o n8n confere no Mercado Pago e credita; aqui so acompanha o saldo
+  async function acompanhar(saldoAntes) {
+    const meu = ++ciclo;
+    for (let i = 0; i < 36; i++) {            // ~6 minutos
+      await new Promise(r => setTimeout(r, 10000));
+      if (meu !== ciclo) return false;
+      const a = await atualizarSaldo(true);
+      if (a.isLogged && Number(a.creditos) > Number(saldoAntes)) {
+        status(`Pagamento aprovado! Seu saldo agora é ${Number(a.creditos).toLocaleString('pt-BR')} créditos.`, 'ok');
+        try { localStorage.removeItem(PENDENTE); } catch (_) {}
+        return true;
+      }
+    }
+    if (meu !== ciclo) return false;
+    status('Ainda não recebemos a confirmação do Mercado Pago. Se você pagou, os créditos entram em alguns minutos — atualize a página.', '');
+    return false;
+  }
+
+  btnComprar.addEventListener('click', async () => {
+    if (!escolhido || esperando) return;
+    // abre a aba do checkout ja no clique (senao o navegador bloqueia o pop-up)
+    const aba = window.open('', '_blank');
+    esperando = true;
+    btnComprar.disabled = true;
+    btnComprar.textContent = 'Gerando link de pagamento…';
+    status('');
+    const saldoAntes = Number(window.currentCreditos ?? 0);
+    try {
+      const pg = await window.SoloiaConta.criarPagamento(escolhido.dataset.pacote);
+      try { localStorage.setItem(PENDENTE, JSON.stringify({ ...pg, saldoAntes, em: Date.now() })); } catch (_) {}
+      // o n8n passa a conferir o pagamento a partir daqui (continua mesmo se esta pagina fechar)
+      const confirmacao = window.SoloiaConta.confirmarPagamento(pg);
+      if (aba && !aba.closed) {
+        aba.location.href = pg.url;
+        status('Finalize o pagamento na aba do Mercado Pago. Esta página atualiza sozinha quando ele for aprovado.');
+        btnComprar.textContent = 'Aguardando pagamento…';
+        const acompanhando = acompanhar(saldoAntes);
+        let r = await Promise.race([confirmacao, acompanhando.then(ok => ok ? 'approved' : 'fim')]);
+        // conexao com o n8n caiu sem resposta: segue so pelo saldo
+        if (r === '') r = (await acompanhando) ? 'approved' : 'fim';
+        ciclo++;
+        if (r === 'approved') { await atualizarSaldo(true); status(`Pagamento aprovado! Seu saldo agora é ${Number(window.currentCreditos || 0).toLocaleString('pt-BR')} créditos.`, 'ok'); try { localStorage.removeItem(PENDENTE); } catch (_) {} }
+        else if (r === 'rejected') { status('O pagamento não foi aprovado. Você pode tentar de novo.', 'erro'); try { localStorage.removeItem(PENDENTE); } catch (_) {} }
+      } else {
+        // pop-up bloqueado: vai para o checkout nesta aba e volta para ?creditos=1&payment=...
+        await new Promise(r => setTimeout(r, 400));
+        location.href = pg.url;
+        return;
+      }
+    } catch (e) {
+      try { aba && aba.close(); } catch (_) {}
+      status(e.message === 'login' ? 'Sua sessão expirou. Entre de novo para comprar.' : 'Não foi possível gerar o pagamento. Tente de novo em instantes.', 'erro');
+    }
+    esperando = false;
+    btnComprar.disabled = !escolhido;
+    btnComprar.textContent = textoBotao();
+  });
+  document.getElementById('comprarVoltar').addEventListener('click', () => mostrarVista(null));
+
+  // Links de creditos (topo, menu, "clique aqui", aviso de saldo) abrem a tela propria
+  document.addEventListener('click', ev => {
+    const a = ev.target.closest('a[href]');
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (href.includes('?creditos=1') || /solomaisia\.com\.br\/creditos/.test(href)) {
+      ev.preventDefault();
+      try { menu.hidden = true; } catch (_) {}
+      abrirComprar();
+    }
+  }, true);
+
+  // Volta do Mercado Pago nesta aba (?creditos=1&payment=...) ou link direto para a compra
+  const qs = new URLSearchParams(location.search);
+  if (qs.get('creditos') === '1') {
+    abrirComprar();
+    const pagamento = (qs.get('payment') || '').toLowerCase();
+    try { history.replaceState(null, '', location.pathname); } catch (_) {}
+    let pend = null;
+    try { pend = JSON.parse(localStorage.getItem(PENDENTE) || 'null'); } catch (_) {}
+    if (pagamento === 'failure') {
+      status('O pagamento não foi aprovado. Você pode tentar de novo.', 'erro');
+      try { localStorage.removeItem(PENDENTE); } catch (_) {}
+    } else if (pagamento === 'success' || pagamento === 'pending') {
+      status(pagamento === 'success' ? 'Pagamento recebido! Confirmando com o Mercado Pago…' : 'Pagamento pendente. Assim que ele for aprovado, os créditos entram sozinhos.');
+      if (pend?.externalRef) window.SoloiaConta.confirmarPagamento(pend);
+      acompanhar(pend?.saldoAntes ?? window.currentCreditos ?? 0);
+    }
+  }
 }
 if (document.readyState !== 'loading') iniciarConta(); else document.addEventListener('DOMContentLoaded', iniciarConta);
 

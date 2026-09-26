@@ -108,5 +108,31 @@
     if (error) throw error;
   }
 
-  window.SoloiaConta = { sessao, entrar, sair, salvar, listar, abrir, apagar };
+  // Compra de creditos: o n8n cria o link do Mercado Pago (soloia-pagamento, confere a assinatura da sessao)
+  // e o fluxo "COMPRA DE CRÉDITOS" (soloia-create-payment) espera o pagamento e credita.
+  const PAGAMENTO_URL = 'https://n8nls.solomaisia.com.br/webhook/soloia-pagamento';
+  const CONFIRMAR_URL = 'https://n8nls.solomaisia.com.br/webhook/soloia-create-payment';
+
+  async function criarPagamento(packageId) {
+    const a = await sessao();
+    if (!a.isLogged || !a.upload?.sig) throw new Error('login');
+    const u = a.upload;
+    const resp = await fetch(PAGAMENTO_URL, { method: 'POST', body: new URLSearchParams({
+      memberId: u.memberId, email: u.email || '', exp: String(u.exp), sig: u.sig, packageId, volta: location.origin }) });
+    const d = await resp.json().catch(() => ({}));
+    if (!d.ok || !d.url) throw new Error(d.motivo || 'falha');
+    return { url: d.url, externalRef: d.externalRef, packageId: d.packageId, memberId: u.memberId };
+  }
+
+  // Resposta: 'approved' | 'rejected' | '' (conexao caiu; o n8n continua conferindo e credita mesmo assim)
+  async function confirmarPagamento({ memberId, packageId, externalRef }) {
+    try {
+      const resp = await fetch(CONFIRMAR_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ memberId, packageId, externalRef }), keepalive: true });
+      const d = await resp.json().catch(() => ({}));
+      return String(d.status || '').toLowerCase();
+    } catch (_) { return ''; }
+  }
+
+  window.SoloiaConta = { sessao, entrar, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento };
 })();
