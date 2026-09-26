@@ -114,6 +114,12 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .cf-conferi input{width:18px;height:18px}
   .cf-dica{text-align:center;font-size:13px;min-height:18px;margin-top:6px}
   .cf-voltar{background:#16223d;box-shadow:none}
+  .cf-lavoura{margin-top:12px;border-top:1px solid #1a3055;padding-top:8px}
+  .cf-lavoura summary{cursor:pointer;padding:6px 0;color:#dfeaff}
+  .cf-lav-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}
+  .cf-lav-grid label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+  .cf-lav-grid input,.cf-lav-grid select{width:100%;min-width:0;background:#0b1730;border:1px solid #1a3055;color:#dfeaff;border-radius:8px;padding:8px;font:inherit;font-size:14px}
+  @media(max-width:600px){.cf-lav-grid{grid-template-columns:minmax(0,1fr)}}
   @media(max-width:600px){
     .cf-cab{display:none}
     .cf-row{grid-template-columns:minmax(0,1fr) 32px;grid-template-areas:"campo rem" "valor valor" "lido lido"}
@@ -650,6 +656,7 @@ startBtn.addEventListener('click', async () => {
     trackEvent('laudo_lido', { cultura: culturaId, amostras: dados.amostras.length, laboratorio: dados.laboratorio || '' });
     formEl.hidden = true;
     window.SoloiaConfirmacao.abrir(confEl, dados, {
+      cultura: culturaId,
       onVoltar: () => { confEl.hidden = true; formEl.hidden = false; },
       onConfirmar: (conf) => {
         trackEvent('valores_confirmados', { cultura: culturaId, editados: Object.values(conf.laudo.campos).filter(c => c.editado).length,
@@ -690,6 +697,7 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
     // Leitura ja feita (nao paga o LlamaParse 2x) e valores conferidos pelo agronomo
     if (conf.llamaJobId) fd.append('llamaJobId', conf.llamaJobId);
     fd.append('laudoConfirmado', JSON.stringify(conf.laudo));
+    if (conf.personalizacao && Object.keys(conf.personalizacao).length) fd.append('personalizacao', JSON.stringify(conf.personalizacao));
     // Identidade assinada pelo backend do Wix (o n8n confere a assinatura).
     // Se a resposta atrasar, usa a assinatura enviada no carregamento da página, se ainda válida.
     const cached = window.SoloiaAuth?.upload;

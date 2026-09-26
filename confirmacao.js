@@ -23,6 +23,14 @@ const CAMPOS = [
   ['saturacaoBasesPercentual', 'Saturação por bases (V)', '%'],
   ['saturacaoAlPercentual', 'Saturação por Al (m)', '%'],
   ['feOxalatoGDm3', 'Ferro (oxalato)', 'g/dm³'],
+  // micronutrientes e enxofre (Tabelas 6.11 e 6.12; nao entram nas contas)
+  ['enxofreMgDm3', 'Enxofre (S)', 'mg/dm³'],
+  ['zincoMgDm3', 'Zinco (Zn)', 'mg/dm³'],
+  ['cobreMgDm3', 'Cobre (Cu)', 'mg/dm³'],
+  ['boroMgDm3', 'Boro (B)', 'mg/dm³'],
+  ['manganesMgDm3', 'Manganês (Mn)', 'mg/dm³'],
+  ['ferroMgDm3', 'Ferro (Fe)', 'mg/dm³'],
+  ['sodioMgDm3', 'Sódio (Na)', 'mg/dm³'],
 ];
 const INFO = Object.fromEntries(CAMPOS.map(([k, nome, un]) => [k, { nome, un }]));
 const UNIDADE_CONTRATO = { '%': '%', '': 'indice', 'mg/dm³': 'mg/dm3', 'cmolc/dm³': 'cmolc/dm3', 'g/dm³': 'g/dm3' };
@@ -36,7 +44,8 @@ function linhasDe(laudo) {
   return Object.entries(laudo.campos || {}).filter(([k]) => INFO[k]).map(([k, c]) => ({
     campo: k,
     texto: c.valor === null && c.limite ? (c.textoOriginal || `<${br(c.limiteValor)}`) : br(c.valor),
-    lido: c.textoOriginal !== undefined ? `${c.rotuloImpresso ? c.rotuloImpresso + ': ' : ''}${c.textoOriginal}` : (c.origem === 'calculado' ? `calculado: ${c.regra || ''}` : ''),
+    lido: (c.textoOriginal !== undefined ? `${c.rotuloImpresso ? c.rotuloImpresso + ': ' : ''}${c.textoOriginal}` : (c.origem === 'calculado' ? `calculado: ${c.regra || ''}` : ''))
+      + (c.metodoTexto ? ` (${c.metodoTexto})` : ''),
     original: c,
   }));
 }
@@ -53,6 +62,7 @@ function montarLaudo(base, linhas, camadaCm) {
     const pagina = l.original?.pagina ?? 1;
     const unidade = l.campo === 'phAgua' ? 'pH' : UNIDADE_CONTRATO[INFO[l.campo].un];
     const extra = { ...(l.original?.metodo !== undefined ? { metodo: l.original.metodo } : {}),
+      ...(l.original?.metodoTexto ? { metodoTexto: l.original.metodoTexto } : {}),
       ...(l.original?.textoOriginal !== undefined ? { textoOriginal: l.original.textoOriginal } : {}) };
     if (!n) { erros.push(`${INFO[l.campo].nome}: valor "${l.texto}" não é um número.`); continue; }
     if (n.limite) { campos[l.campo] = { valor: null, limite: n.limite, limiteValor: n.valor, unidade, pagina, ...extra }; continue; }
@@ -77,7 +87,7 @@ function opcoesCampo(atual) {
 /**
  * Abre a tela. dados = resposta do webhook soloia-ler. Chama onConfirmar({ laudo, llamaJobId }) ou onVoltar().
  */
-export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16 }) {
+export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = '' }) {
   let indice = 0;
   let linhas = [];
   let camada = null;
@@ -92,6 +102,23 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16 }) {
 
   function atual() {
     return montarLaudo(dados.amostras[indice].laudo, linhas, camada);
+  }
+
+  // Dados opcionais da lavoura -> personalizacao do motor (personalizacao.mjs valida de novo no servidor)
+  function lerLavoura() {
+    const v = id => el.querySelector('#' + id)?.value || '';
+    const saida = {};
+    const rend = v('lvRend').trim();
+    if (rend) {
+      const n = lerNumero(rend);
+      if (!n || n.limite || !(n.valor > 0)) { el.querySelector('.cf-dica').textContent = 'Produtividade inválida.'; el.querySelector('.cf-lavoura').open = true; return null; }
+      saida.rendimentoTHa = n.valor;
+    }
+    if (v('lvSistema')) saida.sistema = v('lvSistema');
+    if (v('lvCultivo')) saida.cultivoAposAnalise = Number(v('lvCultivo'));
+    if (v('lvAntec')) saida.culturaAntecedente = v('lvAntec');
+    if (v('lvExpect')) saida.expectativaResposta = v('lvExpect');
+    return saida;
   }
 
   function renderContas() {
@@ -114,6 +141,8 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16 }) {
   }
 
   function render() {
+    const lav = ['lvRend', 'lvSistema', 'lvCultivo', 'lvAntec', 'lvExpect'].map(id => [id, el.querySelector('#' + id)?.value]);
+    const aberto = el.querySelector('.cf-lavoura')?.open;
     const a = dados.amostras[indice];
     const seletor = dados.amostras.length > 1 ? `
       <div class="cf-linha-topo"><label for="cfAmostra">Amostra</label>
@@ -139,6 +168,20 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16 }) {
       </div>
       <button type="button" class="cf-add">+ adicionar valor</button>
       <div class="cf-contas" aria-live="polite"></div>
+      <details class="cf-lavoura">
+        <summary>Dados da lavoura (opcional)</summary>
+        <p class="muted" style="font-size:13px">Sem estes dados, o relatório mostra os cenários do manual para cada opção.</p>
+        <div class="cf-lav-grid">
+          <label>Produtividade esperada (t/ha)<input id="lvRend" inputmode="decimal" placeholder="Referência do manual"></label>
+          <label>Sistema de manejo<select id="lvSistema">${cultura === 'arroz-irrigado'
+            ? '<option value="">Não informado</option><option value="arroz_solo_seco">Semeadura em solo seco</option><option value="arroz_pre_germinado">Pré-germinado ou transplante</option>'
+            : '<option value="">Não informado</option><option value="convencional">Convencional</option><option value="plantio_direto_implantacao">Plantio direto em implantação</option><option value="plantio_direto_consolidado">Plantio direto consolidado</option>'}</select></label>
+          ${cultura === 'arroz-irrigado'
+            ? '<label>Expectativa de resposta à adubação<select id="lvExpect"><option value="">Não informada</option><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option><option value="muito_alta">Muito alta</option></select></label>'
+            : `<label>Cultivo após a análise<select id="lvCultivo"><option value="">1º cultivo (padrão)</option><option value="1">1º cultivo</option><option value="2">2º cultivo</option></select></label>
+          <label>Cultura antecedente<select id="lvAntec"><option value="">Não informada</option><option value="leguminosa">Leguminosa</option><option value="consorciacao_pousio">Consorciação ou pousio</option><option value="graminea">Gramínea</option></select></label>`}
+        </div>
+      </details>
       <label class="cf-conferi"><input id="cfConferi" type="checkbox"> Conferi os valores com o PDF do laudo.</label>
       <div class="cf-dica muted"></div>
       <div class="actions">
@@ -163,8 +206,12 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16 }) {
     el.querySelector('#cfConfirmar').addEventListener('click', () => {
       const { laudo, erros } = atual();
       if (erros.length) return;
-      onConfirmar({ laudo, llamaJobId: dados.llamaJobId, validacao: validarLaudo(laudo) });
+      const personalizacao = lerLavoura();
+      if (personalizacao === null) return;
+      onConfirmar({ laudo, llamaJobId: dados.llamaJobId, validacao: validarLaudo(laudo), personalizacao });
     });
+    for (const [id, valor] of lav) { const c = el.querySelector('#' + id); if (c && valor) c.value = valor; }
+    if (aberto) el.querySelector('.cf-lavoura').open = true;
     renderContas();
   }
 
