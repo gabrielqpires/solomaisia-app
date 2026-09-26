@@ -60,6 +60,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .etapas li.atual span{background:#2a7fff}
   .etapas li.feita{color:#9fe0b8;border-color:#1f5a3c}
   .etapas li.feita span{background:#1f5a3c}
+  @media(max-width:420px){
+    .etapas{gap:4px;padding:0 6px;flex-wrap:nowrap}
+    .etapas li{font-size:12px;padding:5px 8px;gap:5px;white-space:nowrap}
+    .etapas li span{width:18px;height:18px;font-size:11px}
+  }
 
   /* Espera */
   .espera-dica{font-size:12px;color:var(--muted);margin-top:8px}
