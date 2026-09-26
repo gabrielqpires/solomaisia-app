@@ -68,13 +68,71 @@
     }
   }
 
+  // Google por redirecionamento (tela do Google mostra o endereco do Supabase). Usado fora do dominio proprio.
   async function entrar() {
     const c = await cli();
     await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
   }
 
+  // Login por e-mail: link de acesso (sem senha). O link precisa ser aberto neste mesmo navegador.
+  async function entrarEmail(email) {
+    const c = await cli();
+    const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
+    if (error) throw error;
+  }
+
+  // Botao oficial do Google (Google Identity Services): a janela do Google mostra solomaisia.com.br.
+  // So funciona nas origens cadastradas no Google Cloud (o dominio proprio); fora dele devolve false.
+  const GOOGLE_CLIENT_ID = '441509315455-ft49au932upsbmpdr5o13d80f1ba2aj3.apps.googleusercontent.com';
+  const dominioProprio = () => /(^|\.)solomaisia\.com\.br$/.test(location.hostname);
+  let gsi = null;
+  function prepararGoogle(aoEntrar, aoErro) {
+    if (!dominioProprio()) return Promise.resolve(false);
+    if (!gsi) gsi = (async () => {
+      await new Promise((ok, falha) => {
+        if (window.google?.accounts?.id) return ok();
+        const s = document.createElement('script');
+        s.src = 'https://accounts.google.com/gsi/client';
+        s.async = true;
+        s.onload = ok;
+        s.onerror = () => falha(new Error('gsi'));
+        document.head.appendChild(s);
+      });
+      // nonce: o Google recebe o hash, o Supabase confere com o valor original
+      const bruto = [...crypto.getRandomValues(new Uint8Array(24))].map(x => x.toString(16).padStart(2, '0')).join('');
+      const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(bruto)))].map(x => x.toString(16).padStart(2, '0')).join('');
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        nonce: hash,
+        use_fedcm_for_prompt: true,
+        itp_support: true,
+        context: 'signin',
+        callback: async (r) => {
+          try {
+            const c = await cli();
+            const { error } = await c.auth.signInWithIdToken({ provider: 'google', token: r.credential, nonce: bruto });
+            if (error) throw error;
+            aoEntrar?.();
+          } catch (e) { console.error('[Solo+IA] login Google:', e); aoErro?.(e); }
+        },
+      });
+      return true;
+    })().catch(e => { console.error('[Solo+IA] GSI:', e); gsi = null; return false; });
+    return gsi;
+  }
+  async function botaoGoogle(el, aoEntrar, aoErro) {
+    if (!(await prepararGoogle(aoEntrar, aoErro))) return false;
+    window.google.accounts.id.renderButton(el, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', locale: 'pt-BR', width: 280 });
+    return true;
+  }
+  // "Continuar como Fulano" no canto da tela (quem ja tem conta Google no navegador)
+  async function sugerirGoogle(aoEntrar, aoErro) {
+    if (await prepararGoogle(aoEntrar, aoErro)) window.google.accounts.id.prompt();
+  }
+
   async function sair() {
     try { await (await cli()).auth.signOut(); } catch (_) {}
+    try { window.google?.accounts?.id?.disableAutoSelect(); } catch (_) {}
     cache = null;
     location.reload();
   }
@@ -200,6 +258,6 @@
     } catch (_) { return ''; }
   }
 
-  window.SoloiaConta = { sessao, entrar, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
+  window.SoloiaConta = { sessao, entrar, entrarEmail, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
     guardarLaudo, listarLaudos, lerLaudo, linkPdf, baixarPdf, apagarLaudo };
 })();

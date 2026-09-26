@@ -247,6 +247,28 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .pacote-sub{width:100%;text-align:left}
   }
 
+  /* Janela Entrar */
+  .botao-entrar{padding:9px 18px;font-size:14px;border-radius:999px}
+  .login-modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,7,18,.72);backdrop-filter:blur(4px)}
+  .login-modal[hidden]{display:none}
+  .login-caixa{position:relative;width:min(400px,100%);background:#0f172a;border:1px solid #24324a;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.55);padding:28px 24px 20px;text-align:center}
+  .login-caixa h2{margin:10px 0 4px;font-size:21px;color:#fff}
+  .login-caixa .muted{margin:0 0 18px;font-size:14px}
+  .login-icone{border-radius:50%}
+  .login-fechar{position:absolute;top:10px;right:10px;width:34px;height:34px;padding:0;border-radius:50%;background:transparent;box-shadow:none;color:#a9b8d6;font-size:22px;line-height:1}
+  .login-fechar:hover{background:#16223d;color:#fff}
+  .login-google{display:flex;justify-content:center;min-height:44px}
+  .login-ou{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:#7f93b5;font-size:13px}
+  .login-ou::before,.login-ou::after{content:"";flex:1;height:1px;background:#24324a}
+  .login-email{display:flex;flex-direction:column;gap:10px}
+  .login-email input{width:100%;background:#0b1730;border:1px solid #24406e;color:#fff;border-radius:12px;padding:12px 14px;font:inherit;font-size:15px}
+  .login-email input:focus{outline:none;border-color:#2a7fff}
+  .login-email button{width:100%;padding:12px}
+  .login-msg{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:13.5px;text-align:left}
+  .login-msg.ok{background:#0f2a1d;border:1px solid #1f5a3c;color:#dff5e8}
+  .login-msg.erro{background:#2a1212;border:1px solid #6b2a2a;color:#ffc9c9}
+  .login-termos{margin:16px 0 0;font-size:12px;color:#7f93b5}
+
   /* Créditos no topo direito */
   #creditos-container{
     position:absolute;
@@ -672,7 +694,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     });
   }
   function openLogin(){
-    if (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) { window.SoloiaConta.entrar(); return; }
+    if (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) { if (window.SoloiaAbrirLogin) window.SoloiaAbrirLogin(); else window.SoloiaConta.entrar(); return; }
     window.parent.postMessage({ type:'soloia:openLogin' }, '*');
   }
   function saveHistory({ memberId, fileName, culture, text, amostra, laudoId, amostraIndice }){
@@ -1394,21 +1416,81 @@ async function iniciarConta() {
   const ver = document.getElementById('historicoVer');
   const partes = ['hero', 'chat', 'etapas'].map(id => document.getElementById(id)).concat(document.querySelector('.wrap > header'));
   const marca = '<a class="topo-marca" href="./" title="Nova análise"><img src="icone.png" alt="" width="34" height="34"><span>Solo<b>+</b>IA</span></a>';
-  const botaoGoogle = id => `<button type="button" class="botao-google" id="${id}">${ICONE_GOOGLE}<span>Entrar com Google</span></button>`;
+
+  // Janela "Entrar": Google (botao oficial no dominio proprio) ou link de acesso por e-mail
+  function abrirLogin() {
+    let m = document.getElementById('loginModal');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'loginModal';
+      m.className = 'login-modal';
+      m.innerHTML = `<div class="login-caixa" role="dialog" aria-modal="true" aria-labelledby="loginTit">
+          <button type="button" class="login-fechar" aria-label="Fechar">×</button>
+          <img src="icone.png" alt="" width="56" height="56" class="login-icone">
+          <h2 id="loginTit">Entrar no Solo+IA</h2>
+          <p class="muted">Primeira vez? A conta é criada automaticamente.</p>
+          <div id="loginGoogle" class="login-google"></div>
+          <div class="login-ou"><span>ou com seu e-mail</span></div>
+          <form id="loginEmailForm" class="login-email" novalidate>
+            <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email" inputmode="email" required aria-label="E-mail">
+            <button type="submit" id="loginEmailBtn">Receber link de acesso</button>
+          </form>
+          <div id="loginMsg" class="login-msg" role="status" hidden></div>
+          <p class="login-termos">Ao entrar, você concorda com o <a href="/consentimento" target="_blank" rel="noopener">Termo de Consentimento</a>.</p>
+        </div>`;
+      document.body.appendChild(m);
+      const fechar = () => { m.hidden = true; };
+      m.querySelector('.login-fechar').addEventListener('click', fechar);
+      m.addEventListener('click', ev => { if (ev.target === m) fechar(); });
+      document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !m.hidden) fechar(); });
+      const msg = m.querySelector('#loginMsg');
+      const mostrar = (txt, tipo) => { msg.hidden = !txt; msg.className = 'login-msg' + (tipo ? ' ' + tipo : ''); msg.innerHTML = txt || ''; };
+      // Google: botao oficial no dominio proprio; fora dele, o login por redirecionamento
+      window.SoloiaConta.botaoGoogle(m.querySelector('#loginGoogle'), () => location.reload(),
+        () => mostrar('Não foi possível entrar com o Google. Tente de novo.', 'erro')).then(ok => {
+        if (ok) return;
+        const g = m.querySelector('#loginGoogle');
+        g.innerHTML = `<button type="button" class="botao-google">${ICONE_GOOGLE}<span>Continuar com Google</span></button>`;
+        g.querySelector('button').addEventListener('click', () => window.SoloiaConta.entrar());
+      });
+      m.querySelector('#loginEmailForm').addEventListener('submit', async ev => {
+        ev.preventDefault();
+        const email = m.querySelector('#loginEmail').value.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { mostrar('Digite um e-mail válido.', 'erro'); return; }
+        const btn = m.querySelector('#loginEmailBtn');
+        btn.disabled = true; btn.textContent = 'Enviando…';
+        try {
+          await window.SoloiaConta.entrarEmail(email);
+          mostrar(`Enviamos um link de acesso para <strong>${escapeHtml(email)}</strong>. Abra o e-mail <strong>neste mesmo navegador</strong> e clique no link. Não chegou? Olhe o spam.`, 'ok');
+          btn.textContent = 'Reenviar link';
+        } catch (e) {
+          const limite = /rate|limit|seconds/i.test(String(e?.message || ''));
+          mostrar(limite ? 'Muitos pedidos seguidos. Espere um minuto e tente de novo.' : 'Não foi possível enviar o link. Confira o e-mail e tente de novo.', 'erro');
+          btn.textContent = 'Receber link de acesso';
+        }
+        btn.disabled = false;
+      });
+    }
+    m.hidden = false;
+    setTimeout(() => m.querySelector('#loginEmail')?.focus(), 50);
+  }
+  window.SoloiaAbrirLogin = abrirLogin;
   bar.hidden = false;
   bar.innerHTML = marca + '<div class="topo-centro"></div><div class="topo-acoes"><span class="topo-carregando" aria-label="Carregando"></span></div>';
 
   const auth = await window.SoloiaConta.sessao();
   if (!auth.isLogged) {
-    bar.innerHTML = marca + `<div class="topo-centro"></div><div class="topo-acoes">${botaoGoogle('btnEntrar')}</div>`;
-    document.getElementById('btnEntrar').addEventListener('click', () => window.SoloiaConta.entrar());
+    bar.innerHTML = marca + `<div class="topo-centro"></div><div class="topo-acoes"><button type="button" class="botao-entrar" id="btnEntrar">Entrar</button></div>`;
+    document.getElementById('btnEntrar').addEventListener('click', () => abrirLogin());
     const aviso = document.getElementById('formAviso');
     if (aviso) {
       aviso.hidden = false;
       aviso.classList.add('aviso-login');
-      aviso.innerHTML = `<span>Entre com sua conta Google para enviar sua análise.</span>${botaoGoogle('btnEntrar2')}`;
-      document.getElementById('btnEntrar2').addEventListener('click', () => window.SoloiaConta.entrar());
+      aviso.innerHTML = `<span>Entre na sua conta para enviar sua análise.</span><button type="button" class="botao-entrar" id="btnEntrar2">Entrar ou criar conta</button>`;
+      document.getElementById('btnEntrar2').addEventListener('click', () => abrirLogin());
     }
+    // "Continuar como Fulano" do Google (so no dominio proprio)
+    window.SoloiaConta.sugerirGoogle(() => location.reload(), () => {});
     return;
   }
 
