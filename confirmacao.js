@@ -106,11 +106,14 @@ const rotuloAmostra = l => `${l.amostra || 'Amostra'}${l.identificacao ? ' — '
 
 /**
  * Abre a tela. dados = resposta do webhook soloia-ler.
- * onConfirmar({ itens: [{ laudo, validacao }], llamaJobId, personalizacao }) — um item por amostra a interpretar
- * (so a selecionada ou todas). saldo() = creditos do usuario (ou null se desconhecido); onComprar() abre a compra.
+ * onConfirmar({ itens: [{ laudo, validacao, indice }], llamaJobId, personalizacao }) — um item por amostra marcada.
+ * saldo() = creditos do usuario (ou null se desconhecido); onComprar() abre a compra.
+ * marcadas: indices ja marcados para gerar; feitas: indices que ja tem interpretacao (Minhas analises).
  */
-export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () => null, custo = 16, cultura = '' }) {
+export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () => null, custo = 16, cultura = '', marcadas: marcadasIniciais, feitas = [] }) {
   const total = dados.amostras.length;
+  const marcadas = new Set(marcadasIniciais && marcadasIniciais.length ? marcadasIniciais : [0]);
+  const jaFeitas = new Set(feitas);
   let indice = 0;
   let microsAberto = false;
   let linhas = [];
@@ -177,6 +180,17 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
     return saida;
   }
 
+  // "Gerar 3 amostras (48 créditos)"
+  function atualizarGerar() {
+    const b = el.querySelector('#cfGerar');
+    if (!b) return;
+    const n = marcadas.size;
+    b.textContent = n ? `Gerar ${n === total && n > 1 ? 'todas as ' + n + ' amostras' : n + (n === 1 ? ' amostra' : ' amostras')} (${n * custo} créditos)` : 'Marque ao menos uma amostra';
+    b.disabled = !n || !el.querySelector('#cfConferi')?.checked;
+    const todas = el.querySelector('#cfMarcarTodas');
+    if (todas) todas.textContent = n < total ? 'marcar todas' : 'desmarcar todas';
+  }
+
   function renderContas() {
     const { laudo, erros } = atual();
     const v = validarLaudo(laudo);
@@ -205,9 +219,8 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
     const invalido = erros.length > 0;
     const conferiu = el.querySelector('#cfConferi').checked;
     const btn = el.querySelector('#cfConfirmar');
-    btn.disabled = invalido || !conferiu;
-    const todas = el.querySelector('#cfTodas');
-    if (todas) todas.disabled = !conferiu;
+    if (btn) btn.disabled = invalido || !conferiu;
+    atualizarGerar();
     el.querySelector('.cf-dica').textContent = invalido ? 'Corrija os valores marcados para continuar.'
       : !conferiu ? 'Marque que conferiu os valores com o PDF para continuar.' : '';
   }
@@ -220,7 +233,7 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
     const seletor = total > 1 ? `
       <div class="cf-amostras">
         <div class="cf-amostras-tit">Este laudo tem <strong>${total} amostras</strong>.</div>
-        <p>Cada amostra vira um relatório separado (${custo} créditos cada). Confira os valores de cada uma e gere <strong>só da selecionada</strong> ou <strong>de todas</strong> no final da página.</p>
+        <p>Cada amostra vira um relatório separado (${custo} créditos cada). Confira os valores de cada uma aqui e, no final da página, <strong>marque quais quer gerar</strong>.</p>
         <label class="cf-amostra-rot" for="cfAmostra">Amostra que você está conferindo</label>
         <select id="cfAmostra" class="cf-amostra-sel">${dados.amostras.map((x, i) => `<option value="${i}"${i === indice ? ' selected' : ''}>${i + 1} de ${total} · ${esc(rotuloAmostra(x.laudo))}</option>`).join('')}</select>
       </div>
@@ -271,10 +284,20 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
       <div class="cf-dica muted"></div>
       <div class="cf-sem-creditos" role="alert" hidden></div>
       ${total > 1 ? `
+      <div class="cf-gerar">
+        <div class="cf-gerar-tit"><span>Gerar interpretação de:</span>
+          <button type="button" class="cf-link" id="cfMarcarTodas">marcar todas</button></div>
+        <div class="cf-gerar-lista">${dados.amostras.map((x, i) => `
+          <label class="cf-gerar-item${marcadas.has(i) ? ' marcada' : ''}">
+            <input type="checkbox" data-marcar="${i}"${marcadas.has(i) ? ' checked' : ''}>
+            <span class="cf-gerar-n">${i + 1}</span><span class="cf-gerar-txt">${esc(rotuloAmostra(x.laudo))}</span>
+            ${jaFeitas.has(i) ? '<span class="cf-feita">já gerada</span>' : ''}
+          </label>`).join('')}
+        </div>
+      </div>
       <div class="actions cf-acoes-multi">
         <button type="button" class="cf-voltar">Voltar</button>
-        <button type="button" id="cfConfirmar" class="cf-sec">Gerar só da amostra ${indice + 1} (${custo} créditos)</button>
-        <button type="button" id="cfTodas">Analisar todas as ${total} amostras (${total * custo} créditos)</button>
+        <button type="button" id="cfGerar"></button>
       </div>` : `
       <div class="actions">
         <button type="button" class="cf-voltar">Voltar</button>
@@ -296,30 +319,46 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
     el.querySelector('.cf-add').addEventListener('click', () => { linhas.push({ campo: '', texto: '', lido: '', original: null }); render(); });
     el.querySelector('#cfConferi').addEventListener('change', renderContas);
     el.querySelector('.cf-voltar').addEventListener('click', () => onVoltar());
-    el.querySelector('#cfConfirmar').addEventListener('click', () => {
+    el.querySelector('#cfConfirmar')?.addEventListener('click', () => {
       const { laudo, erros } = atual();
       if (erros.length) return;
       const personalizacao = lerLavoura();
       if (personalizacao === null) return;
       if (avisarCreditos(1)) return;
-      onConfirmar({ itens: [{ laudo, validacao: validarLaudo(laudo) }], llamaJobId: dados.llamaJobId, personalizacao });
+      onConfirmar({ itens: [{ laudo, validacao: validarLaudo(laudo), indice }], llamaJobId: dados.llamaJobId, personalizacao });
     });
-    el.querySelector('#cfTodas')?.addEventListener('click', () => {
+    el.querySelectorAll('[data-marcar]').forEach(cb => cb.addEventListener('change', () => {
+      const i = Number(cb.dataset.marcar);
+      if (cb.checked) marcadas.add(i); else marcadas.delete(i);
+      cb.closest('.cf-gerar-item').classList.toggle('marcada', cb.checked);
+      atualizarGerar();
+    }));
+    el.querySelector('#cfMarcarTodas')?.addEventListener('click', () => {
+      const todas = marcadas.size < total;
+      el.querySelectorAll('[data-marcar]').forEach(cb => {
+        cb.checked = todas;
+        cb.closest('.cf-gerar-item').classList.toggle('marcada', todas);
+        if (todas) marcadas.add(Number(cb.dataset.marcar)); else marcadas.delete(Number(cb.dataset.marcar));
+      });
+      atualizarGerar();
+    });
+    el.querySelector('#cfGerar')?.addEventListener('click', () => {
       const itens = [];
-      for (let i = 0; i < total; i++) {
+      for (const i of [...marcadas].sort((a, b) => a - b)) {
         const { laudo, erros } = laudoDaAmostra(i);
         if (erros.length) {
           // leva para a amostra com problema
           carregarAmostra(i);
-          el.querySelector('.cf-dica').textContent = `Amostra ${i + 1}: ${erros[0]} Corrija para analisar todas.`;
+          el.querySelector('.cf-dica').textContent = `Amostra ${i + 1}: ${erros[0]} Corrija para gerar.`;
           el.querySelector('.cf-dica').scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
-        itens.push({ laudo, validacao: validarLaudo(laudo) });
+        itens.push({ laudo, validacao: validarLaudo(laudo), indice: i });
       }
+      if (!itens.length) return;
       const personalizacao = lerLavoura();
       if (personalizacao === null) return;
-      if (avisarCreditos(total)) return;
+      if (avisarCreditos(itens.length)) return;
       onConfirmar({ itens, llamaJobId: dados.llamaJobId, personalizacao });
     });
     for (const [id, valor] of lav) { const c = el.querySelector('#' + id); if (c && valor) c.value = valor; }

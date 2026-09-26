@@ -177,6 +177,48 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .cf-sem-creditos{margin:12px 0;padding:14px 16px;border:1px solid #6b4a1a;background:#2a1d0c;border-radius:12px;color:#ffe2b8;font-size:14.5px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
   .cf-sem-creditos[hidden]{display:none}
   .cf-sem-creditos strong{color:#fff}
+  /* Escolha das amostras a gerar */
+  .cf-gerar{margin:14px 0 4px;padding:14px 16px;border:1px solid #24406e;border-radius:14px;background:#0c1528}
+  .cf-gerar-tit{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;font-weight:600;color:#fff}
+  .cf-link{background:none;box-shadow:none;border:0;color:#8fc1ff;padding:2px 4px;font-size:13.5px;font-weight:500;cursor:pointer;text-decoration:underline}
+  .cf-gerar-lista{display:flex;flex-direction:column;gap:6px}
+  .cf-gerar-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #1f3152;border-radius:10px;cursor:pointer;font-size:14px;color:#c9d6ee}
+  .cf-gerar-item:hover{border-color:#2a7fff}
+  .cf-gerar-item.marcada{border-color:#2a7fff;background:#10224a;color:#fff}
+  .cf-gerar-item input{width:18px;height:18px;margin:0;flex:none;cursor:pointer}
+  .cf-gerar-n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#1d3a6b;font-weight:700;font-size:12px;flex:none}
+  .cf-gerar-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cf-feita{flex:none;font-size:12px;color:#9fe0b8;border:1px solid #1f5a3c;border-radius:999px;padding:2px 8px}
+  /* Formulario com laudo ja lido */
+  .reuso-aviso{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:12px 14px;border:1px solid #1f5a3c;background:#0f2a1d;border-radius:12px;font-size:14px;color:#dff5e8}
+  .reuso-aviso[hidden]{display:none}
+  /* Minhas analises por laudo */
+  .historico-sub{margin:22px 0 8px;font-size:15px;color:#a9b8d6;font-weight:600}
+  .laudo-card{background:#0c1222;border:1px solid #1f3152;border-radius:14px;padding:14px 16px;margin-bottom:12px}
+  .laudo-cab{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .laudo-tit{min-width:0}
+  .laudo-nome{font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis}
+  .laudo-info{color:var(--muted);font-size:13px;margin-top:2px}
+  .laudo-status{flex:none;font-size:12.5px;padding:4px 10px;border-radius:999px;border:1px solid #1f5a3c;color:#9fe0b8;background:#0f2a1d}
+  .laudo-status.pendente{border-color:#6b4a1a;color:#ffd08a;background:#2a1d0c}
+  .laudo-amostras{margin:12px 0 10px;display:flex;flex-direction:column;gap:4px}
+  .la-linha{display:flex;align-items:center;gap:10px;padding:7px 0;border-top:1px solid #16223a;font-size:14px;color:#a9b8d6}
+  .la-linha.feita{color:#e9efff}
+  .la-n{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:50%;background:#16223d;font-size:12px;font-weight:700;flex:none}
+  .la-linha.feita .la-n{background:#1f5a3c;color:#fff}
+  .la-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .la-acao{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+  .la-abrir{background:#16223d;box-shadow:none;border:1px solid #24406e;color:#dfeaff;padding:5px 10px;font-size:12.5px;font-weight:500;border-radius:999px;cursor:pointer}
+  .la-abrir:hover{border-color:#2a7fff;color:#fff}
+  .la-pend{font-size:12.5px;color:#7f93b5}
+  .laudo-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .la-gerar{padding:9px 14px;font-size:14px}
+  .la-apagar{margin-left:auto;color:#ff9b9b}
+  @media (max-width:600px){
+    .la-linha{flex-wrap:wrap}
+    .la-acao{width:100%;justify-content:flex-start;padding-left:32px}
+    .la-apagar{margin-left:0}
+  }
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
     .cf-acoes-multi button{width:100%}
@@ -493,6 +535,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <div class="card">
       <div class="pad" id="confirmacao" hidden></div>
       <div class="pad" id="formulario">
+        <div id="reusoAviso" class="reuso-aviso" hidden></div>
         <div class="row">
           <div class="field">
             <label>📎 PDF da análise de solo (somente PDF nativo)</label>
@@ -632,8 +675,8 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     if (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) { window.SoloiaConta.entrar(); return; }
     window.parent.postMessage({ type:'soloia:openLogin' }, '*');
   }
-  function saveHistory({ memberId, fileName, culture, text, amostra }){
-    if (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) { window.SoloiaConta.salvar({ fileName, culture, text, amostra }); return; }
+  function saveHistory({ memberId, fileName, culture, text, amostra, laudoId, amostraIndice }){
+    if (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) { window.SoloiaConta.salvar({ fileName, culture, text, amostra, laudoId, amostraIndice }); return; }
     window.parent.postMessage({ type:'soloia:saveHistory', memberId, fileName, culture, text }, '*');
   }
 
@@ -855,11 +898,88 @@ function assinaturaUpload(auth){
 }
 
 // Passo 1: ler o laudo (sem gastar creditos) e abrir a conferencia
+// Laudo ja lido, aberto de Minhas analises (site proprio): { f, dados, laudoId, marcadas, feitas }
+let reuso = null;
+
+// Tela de conferencia (leitura nova ou laudo ja lido) e geracao das amostras marcadas
+function abrirConfirmacao({ f, culturaId, culture, dados, laudoId, marcadas, feitas }) {
+  formEl.hidden = true;
+  setEtapa(2);
+  document.body.classList.add('compacto');
+  window.SoloiaConfirmacao.abrir(confEl, dados, {
+    cultura: culturaId,
+    marcadas,
+    feitas,
+    onVoltar: () => { confEl.hidden = true; formEl.hidden = false; setEtapa(1); document.body.classList.remove('compacto'); },
+    saldo: () => (typeof window.currentCreditos === 'number' ? window.currentCreditos : null),
+    onComprar: () => {
+      trackEvent('comprar_da_confirmacao', { cultura: culturaId });
+      if (window.SoloiaAbrirCompra) window.SoloiaAbrirCompra();
+      else window.open('https://www.solomaisia.com.br/creditos', '_top');
+    },
+    onConfirmar: async (conf) => {
+      const total = conf.itens.length;
+      trackEvent('valores_confirmados', { cultura: culturaId, amostras: total,
+        editados: conf.itens.reduce((n, it) => n + Object.values(it.laudo.campos).filter(c => c.editado).length, 0) });
+      const id = await Promise.resolve(laudoId).catch(() => null);
+      // uma amostra por vez; para se faltar credito ou der erro
+      for (let k = 0; k < total; k++) {
+        const it = conf.itens[k];
+        const r = await gerarInterpretacao(f, culture, culturaId, { ...conf, laudo: it.laudo, validacao: it.validacao, laudoId: id },
+          { indice: k + 1, total, amostraN: it.indice + 1, amostrasTotal: dados.amostras.length });
+        if (r !== 'ok') break;
+      }
+    },
+  });
+}
+
+// Minhas analises -> "Gerar as que faltam": volta ao formulario com o laudo ja lido (sem LlamaParse de novo)
+window.SoloiaReabrirLaudo = async (id) => {
+  const l = await window.SoloiaConta.lerLaudo(id);
+  if (!l?.leitura?.amostras?.length) throw new Error('Leitura do laudo não encontrada.');
+  if (!l.pdf_path) throw new Error('O PDF deste laudo não foi guardado.');
+  const file = await window.SoloiaConta.baixarPdf(l.pdf_path, l.arquivo || 'laudo.pdf');
+  const feitas = [...new Set((l.interpretacoes || []).map(x => x.amostra_indice).filter(Number.isInteger))];
+  const pendentes = l.leitura.amostras.map((_, i) => i).filter(i => !feitas.includes(i));
+  reuso = { f: file, dados: l.leitura, laudoId: l.id, feitas, marcadas: pendentes.length ? pendentes : [0] };
+  if (heroEl) heroEl.style.display = '';
+  if (chatEl) chatEl.style.display = 'none';
+  confEl.hidden = true;
+  formEl.hidden = false;
+  setEtapa(1);
+  document.body.classList.remove('compacto');
+  if (l.cultura) cultureEl.value = l.cultura;
+  const campoArquivo = fileEl.closest('.field');
+  if (campoArquivo) campoArquivo.hidden = true;
+  const av = document.getElementById('reusoAviso');
+  av.hidden = false;
+  av.innerHTML = `<div>📄 Usando o laudo já lido: <strong>${escapeHtml(l.arquivo || 'laudo.pdf')}</strong>
+    (${l.leitura.amostras.length} ${l.leitura.amostras.length === 1 ? 'amostra' : 'amostras'}, ${feitas.length} já ${feitas.length === 1 ? 'gerada' : 'geradas'}).
+    <span class="muted">Ele não será lido de novo.</span></div>
+    <button type="button" class="botao-link" id="reusoCancelar">Enviar outro PDF</button>`;
+  document.getElementById('reusoCancelar').addEventListener('click', () => {
+    reuso = null;
+    av.hidden = true;
+    if (campoArquivo) campoArquivo.hidden = false;
+    startBtn.textContent = 'Ler laudo';
+  });
+  startBtn.textContent = 'Conferir valores';
+  try { window.scrollTo({ top: 0 }); } catch (_) {}
+};
+
 startBtn.addEventListener('click', async () => {
   avisarForm('');
-  const f = fileEl.files && fileEl.files[0];
   const culturaId = cultureEl.value;
   const culture = window.SOLOIA_CULTURAS?.find(c => c.cultura === culturaId)?.nome || '';
+  // laudo ja lido (Minhas analises): nao le o PDF de novo
+  if (reuso) {
+    if(!culturaId){ avisarForm('Escolha a cultura.'); cultureEl.focus(); return; }
+    if (!consentEl?.checked) { avisarForm('Para continuar, é necessário marcar o Termo de Consentimento.'); return; }
+    trackEvent('laudo_reaberto', { cultura: culturaId, amostras: reuso.dados.amostras.length });
+    abrirConfirmacao({ f: reuso.f, culturaId, culture, dados: reuso.dados, laudoId: Promise.resolve(reuso.laudoId), marcadas: reuso.marcadas, feitas: reuso.feitas });
+    return;
+  }
+  const f = fileEl.files && fileEl.files[0];
 
   if(!f){ avisarForm('Selecione o PDF da análise.'); return; }
   if(!(await isPdf(f))){ if(pdfTip) pdfTip.textContent='Arquivo não parece ser um PDF.'; return; }
@@ -915,30 +1035,9 @@ startBtn.addEventListener('click', async () => {
       return;
     }
     trackEvent('laudo_lido', { cultura: culturaId, amostras: dados.amostras.length, laboratorio: dados.laboratorio || '' });
-    formEl.hidden = true;
-    setEtapa(2);
-    document.body.classList.add('compacto');
-    window.SoloiaConfirmacao.abrir(confEl, dados, {
-      cultura: culturaId,
-      onVoltar: () => { confEl.hidden = true; formEl.hidden = false; setEtapa(1); document.body.classList.remove('compacto'); },
-      saldo: () => (typeof window.currentCreditos === 'number' ? window.currentCreditos : null),
-      onComprar: () => {
-        trackEvent('comprar_da_confirmacao', { cultura: culturaId });
-        if (window.SoloiaAbrirCompra) window.SoloiaAbrirCompra();
-        else window.open('https://www.solomaisia.com.br/creditos', '_top');
-      },
-      onConfirmar: async (conf) => {
-        const total = conf.itens.length;
-        trackEvent('valores_confirmados', { cultura: culturaId, amostras: total,
-          editados: conf.itens.reduce((n, it) => n + Object.values(it.laudo.campos).filter(c => c.editado).length, 0) });
-        // uma amostra por vez; para se faltar credito ou der erro
-        for (let k = 0; k < total; k++) {
-          const it = conf.itens[k];
-          const r = await gerarInterpretacao(f, culture, culturaId, { ...conf, laudo: it.laudo, validacao: it.validacao }, { indice: k + 1, total });
-          if (r !== 'ok') break;
-        }
-      },
-    });
+    // site proprio: guarda o PDF e a leitura (Minhas analises: ver PDF e gerar outras amostras sem ler de novo)
+    const laudoId = (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) ? window.SoloiaConta.guardarLaudo({ file: f, dados, cultura: culturaId }) : Promise.resolve(null);
+    abrirConfirmacao({ f, culturaId, culture, dados, laudoId });
   } catch (err) {
     avisarForm('Erro de conexão ao ler o laudo: ' + escapeHtml(String(err.message || err)));
   } finally {
@@ -958,7 +1057,7 @@ async function gerarInterpretacao(f, culture, culturaId, conf, lote = null){
     setEtapa(3);
     document.body.classList.add('compacto');
     toChat();
-    addMsg('me',`${lote && lote.total > 1 ? `<b>Amostra ${lote.indice} de ${lote.total}</b>\n` : ''}Enviei <span class='pill'>📄 ${escapeHtml(f.name)}</span>\nCultura: <b>${escapeHtml(culture)}</b>\n${escapeHtml(rotulo)}`);
+    addMsg('me',`${lote && lote.total > 1 ? `<b>Gerando ${lote.indice} de ${lote.total}</b>\n` : ''}Enviei<span class='pill'>📄 ${escapeHtml(f.name)}</span>\nCultura: <b>${escapeHtml(culture)}</b>\n${escapeHtml(rotulo)}`);
 
     loader = createStagedLoader(STAGES, DURATIONS);
     typing = addMsg('ai', '<div class="espera-dica">Leva cerca de 1 a 2 minutos. Não feche a página.</div>');
@@ -1107,14 +1206,15 @@ async function gerarInterpretacao(f, culture, culturaId, conf, lote = null){
       if (partes.length === 2) {
         // Relatorio do motor em duas abas: Diagnostico e Recomendacao
         const bubble = addMsg('ai', '<div class="relatorio-slot"></div>');
-        montarRelatorio(bubble.querySelector('.relatorio-slot'), texto, culture, (lote && lote.total > 1 ? `${lote.indice} de ${lote.total} · ` : '') + rotulo);
+        montarRelatorio(bubble.querySelector('.relatorio-slot'), texto, culture, (lote && lote.amostrasTotal > 1 ? `${lote.amostraN} de ${lote.amostrasTotal} · ` : '') + rotulo);
         try { bubble.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
       } else {
         const bubble = addMsg('ai', `<div class="report"><div class="type-target"></div></div>`);
         await mdTypewriter(bubble.querySelector('.type-target'), texto, { charDelay: 6, renderEvery: 24 });
       }
       console.log('[Solo+IA] ✅ Typewriter concluído!');
-      saveHistory({ memberId: auth?.memberId, fileName: f.name, culture, text: texto, amostra: conf?.laudo?.amostra || null });
+      saveHistory({ memberId: auth?.memberId, fileName: f.name, culture, text: texto, amostra: conf?.laudo?.amostra || null,
+        laudoId: conf?.laudoId || null, amostraIndice: lote?.amostraN ? lote.amostraN - 1 : null });
       
       if (typeof data.creditos === 'number') {
         renderCreditos(data.creditos);
@@ -1372,37 +1472,107 @@ async function iniciarConta() {
     try { window.scrollTo({ top: 0 }); } catch (_) {}
   }
   function fecharHistorico() { mostrarVista(null); }
+  // Minhas analises: um cartao por laudo (PDF), com as amostras geradas e as que faltam
+  function cartaoLaudo(l) {
+    const rotulos = Array.isArray(l.rotulos) && l.rotulos.length ? l.rotulos : ['Amostra'];
+    const total = l.total_amostras || rotulos.length;
+    const porAmostra = new Map();
+    for (const x of l.interpretacoes || []) {
+      const i = Number.isInteger(x.amostra_indice) ? x.amostra_indice : 0;
+      if (!porAmostra.has(i)) porAmostra.set(i, []);
+      porAmostra.get(i).push(x);
+    }
+    const nFeitas = [...porAmostra.keys()].filter(i => i < total).length;
+    const pendentes = total - nFeitas;
+    const amostras = rotulos.map((r, i) => {
+      const its = (porAmostra.get(i) || []).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
+      return `<div class="la-linha${its.length ? ' feita' : ''}">
+        <span class="la-n">${i + 1}</span><span class="la-txt">${escapeHtml(r)}</span>
+        <span class="la-acao">${its.length
+          ? its.map(x => `<button type="button" class="la-abrir" data-interp="${Number(x.id)}">${escapeHtml(x.cultura || 'Abrir')} · ${fmt(x.criado_em)}</button>`).join('')
+          : '<span class="la-pend">não gerada</span>'}</span>
+      </div>`;
+    }).join('');
+    const status = total === 1
+      ? (nFeitas ? '1 amostra · gerada' : '1 amostra · não gerada')
+      : `${total} amostras · ${nFeitas} ${nFeitas === 1 ? 'gerada' : 'geradas'}`;
+    return `<article class="laudo-card">
+      <div class="laudo-cab">
+        <div class="laudo-tit">
+          <div class="laudo-nome">📄 ${escapeHtml(l.arquivo || 'laudo.pdf')}</div>
+          <div class="laudo-info">${escapeHtml([l.laboratorio, l.localizacao].filter(Boolean).join(' · '))}${l.laboratorio || l.localizacao ? ' · ' : ''}${fmt(l.criado_em)}</div>
+        </div>
+        <span class="laudo-status${pendentes > 0 ? ' pendente' : ''}">${status}</span>
+      </div>
+      <div class="laudo-amostras">${amostras}</div>
+      <div class="laudo-acoes">
+        ${l.pdf_path && pendentes > 0 ? `<button type="button" class="la-gerar" data-reabrir="${escapeHtml(l.id)}">Gerar ${pendentes === 1 ? 'a amostra que falta' : 'as ' + pendentes + ' que faltam'}</button>` : ''}
+        ${l.pdf_path && pendentes === 0 ? `<button type="button" class="botao-sec" data-reabrir="${escapeHtml(l.id)}">Gerar de novo</button>` : ''}
+        ${l.pdf_path ? `<button type="button" class="botao-sec" data-pdf="${escapeHtml(l.pdf_path)}">Ver PDF</button>` : ''}
+        <button type="button" class="botao-link la-apagar" data-apagar="${escapeHtml(l.id)}" data-path="${escapeHtml(l.pdf_path || '')}">Apagar laudo</button>
+      </div>
+    </article>`;
+  }
+
   async function abrirLista() {
     mostrarVista('historico');
     ver.hidden = true; ver.innerHTML = '';
     lista.hidden = false;
     lista.innerHTML = '<p class="muted">Carregando…</p>';
     try {
-      const itens = await window.SoloiaConta.listar();
-      if (!itens.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhuma análise ainda.</p><p class="muted">As interpretações que você gerar aparecem aqui.</p></div>'; return; }
-      lista.innerHTML = itens.map(i => `<button type="button" class="historico-item" data-id="${Number(i.id)}">
+      const { laudos, soltas } = await window.SoloiaConta.listarLaudos();
+      if (!laudos.length && !soltas.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhuma análise ainda.</p><p class="muted">Os laudos que você enviar e as interpretações geradas aparecem aqui.</p></div>'; return; }
+      lista.innerHTML = laudos.map(cartaoLaudo).join('')
+        + (soltas.length ? `<h3 class="historico-sub">Outras análises</h3>` + soltas.map(i => `<button type="button" class="historico-item" data-interp="${Number(i.id)}">
           <span class="h-cultura">${escapeHtml(i.cultura || 'Análise')}</span>
           <span class="h-detalhe">${escapeHtml([i.amostra ? 'Amostra ' + i.amostra : '', i.arquivo || ''].filter(Boolean).join(' · '))}</span>
           <span class="h-data">${fmt(i.criado_em)}</span>
-        </button>`).join('');
+        </button>`).join('') : '');
     } catch (e) {
       lista.innerHTML = '<p class="muted">Não foi possível carregar suas análises. Tente de novo.</p>';
     }
   }
-  lista.addEventListener('click', async ev => {
-    const b = ev.target.closest('.historico-item');
-    if (!b) return;
+
+  async function abrirInterpretacao(id) {
     lista.hidden = true;
     ver.hidden = false;
     ver.innerHTML = '<p class="muted">Carregando…</p>';
+    try { window.scrollTo({ top: 0 }); } catch (_) {}
     try {
-      const a = await window.SoloiaConta.abrir(b.dataset.id);
+      const a = await window.SoloiaConta.abrir(id);
       ver.innerHTML = `<div class="historico-cab"><button type="button" class="botao-link" id="histLista">← Todas as análises</button>
         <span class="muted">${escapeHtml(a.cultura || '')} · ${fmt(a.criado_em)}</span></div><div class="msg ai historico-rel"></div>`;
       montarRelatorio(ver.querySelector('.historico-rel'), a.texto, a.cultura, a.amostra ? 'Amostra ' + a.amostra : '');
       ver.querySelector('#histLista').addEventListener('click', abrirLista);
     } catch (e) {
       ver.innerHTML = '<p class="muted">Não foi possível abrir esta análise.</p>';
+    }
+  }
+
+  lista.addEventListener('click', async ev => {
+    const alvo = ev.target.closest('[data-interp],[data-pdf],[data-reabrir],[data-apagar]');
+    if (!alvo) return;
+    if (alvo.dataset.interp) { abrirInterpretacao(alvo.dataset.interp); return; }
+    if (alvo.dataset.pdf) {
+      // abre a aba ja no clique (senao o navegador bloqueia) e depois coloca o link temporario
+      const aba = window.open('', '_blank');
+      try {
+        const url = await window.SoloiaConta.linkPdf(alvo.dataset.pdf);
+        if (aba && !aba.closed) aba.location.href = url; else location.href = url;
+      } catch (e) { try { aba && aba.close(); } catch (_) {} alert('Não foi possível abrir o PDF.'); }
+      return;
+    }
+    if (alvo.dataset.reabrir) {
+      alvo.disabled = true;
+      alvo.textContent = 'Abrindo…';
+      try { mostrarVista(null); await window.SoloiaReabrirLaudo(alvo.dataset.reabrir); }
+      catch (e) { mostrarVista('historico'); alert(e.message || 'Não foi possível abrir o laudo.'); abrirLista(); }
+      return;
+    }
+    if (alvo.dataset.apagar) {
+      if (!confirm('Apagar este laudo e o PDF? As interpretações já geradas continuam em "Outras análises".')) return;
+      try { await window.SoloiaConta.apagarLaudo(alvo.dataset.apagar, alvo.dataset.path || null); } catch (e) { alert('Não foi possível apagar.'); }
+      abrirLista();
     }
   });
   document.getElementById('btnHistorico').addEventListener('click', abrirLista);

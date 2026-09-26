@@ -79,13 +79,79 @@
     location.reload();
   }
 
-  async function salvar({ fileName, culture, text, amostra }) {
+  async function salvar({ fileName, culture, text, amostra, laudoId, amostraIndice }) {
     if (!text) return;
     try {
       if (!(await sessaoSupabase())) return;
-      const { error } = await cliente.from('interpretacoes').insert({ cultura: culture || null, arquivo: fileName || null, amostra: amostra || null, texto: text });
+      const { error } = await cliente.from('interpretacoes').insert({ cultura: culture || null, arquivo: fileName || null, amostra: amostra || null, texto: text,
+        laudo_id: laudoId || null, amostra_indice: Number.isInteger(amostraIndice) ? amostraIndice : null });
       if (error) console.error('[Solo+IA] salvar historico:', error);
     } catch (e) { console.error('[Solo+IA] salvar historico:', e); }
+  }
+
+  // Laudo lido: guarda o PDF (pasta privada do usuario) e a leitura, para ver o PDF depois e gerar outras
+  // amostras sem ler de novo. Devolve o id do laudo (ou null se falhar; a analise segue normal).
+  async function guardarLaudo({ file, dados, cultura }) {
+    try {
+      const s = await sessaoSupabase();
+      if (!s) return null;
+      let pdfPath = null;
+      if (file) {
+        const caminho = `${s.user.id}/${(crypto.randomUUID && crypto.randomUUID()) || Date.now()}.pdf`;
+        const up = await cliente.storage.from('laudos').upload(caminho, file, { contentType: 'application/pdf', upsert: false });
+        if (up.error) console.error('[Solo+IA] guardar PDF:', up.error); else pdfPath = caminho;
+      }
+      const rotulos = (dados.amostras || []).map(a => `${a.laudo?.amostra || ''}${a.laudo?.identificacao ? ' — ' + a.laudo.identificacao : ''}`);
+      const { data, error } = await cliente.from('laudos').insert({
+        arquivo: file?.name || null, laboratorio: dados.laboratorio || null, localizacao: dados.localizacao || null, cultura: cultura || null,
+        total_amostras: rotulos.length || 1, rotulos, leitura: dados, pdf_path: pdfPath,
+      }).select('id').single();
+      if (error) { console.error('[Solo+IA] guardar laudo:', error); return null; }
+      return data.id;
+    } catch (e) { console.error('[Solo+IA] guardar laudo:', e); return null; }
+  }
+
+  // Minhas analises: laudos (com as interpretacoes de cada um) + interpretacoes antigas sem laudo
+  async function listarLaudos() {
+    const c = await cli();
+    const [l, soltas] = await Promise.all([
+      c.from('laudos').select('id, criado_em, arquivo, laboratorio, localizacao, cultura, total_amostras, rotulos, pdf_path, interpretacoes(id, criado_em, cultura, amostra, amostra_indice)')
+        .order('criado_em', { ascending: false }).limit(100),
+      c.from('interpretacoes').select('id, criado_em, cultura, arquivo, amostra').is('laudo_id', null).order('criado_em', { ascending: false }).limit(100),
+    ]);
+    if (l.error) throw l.error;
+    if (soltas.error) throw soltas.error;
+    return { laudos: l.data || [], soltas: soltas.data || [] };
+  }
+
+  async function lerLaudo(id) {
+    const c = await cli();
+    const { data, error } = await c.from('laudos').select('id, arquivo, cultura, leitura, pdf_path, interpretacoes(amostra_indice)').eq('id', id).single();
+    if (error) throw error;
+    return data;
+  }
+
+  // link temporario (10 min) para abrir o PDF
+  async function linkPdf(caminho) {
+    const c = await cli();
+    const { data, error } = await c.storage.from('laudos').createSignedUrl(caminho, 600);
+    if (error) throw error;
+    return data.signedUrl;
+  }
+
+  async function baixarPdf(caminho, nome) {
+    const c = await cli();
+    const { data, error } = await c.storage.from('laudos').download(caminho);
+    if (error) throw error;
+    return new File([data], nome || 'laudo.pdf', { type: 'application/pdf' });
+  }
+
+  // apaga o PDF e o laudo; as interpretacoes ficam (em "Outras analises")
+  async function apagarLaudo(id, caminho) {
+    const c = await cli();
+    if (caminho) { const r = await c.storage.from('laudos').remove([caminho]); if (r.error) throw r.error; }
+    const { error } = await c.from('laudos').delete().eq('id', id);
+    if (error) throw error;
   }
 
   async function listar() {
@@ -134,5 +200,6 @@
     } catch (_) { return ''; }
   }
 
-  window.SoloiaConta = { sessao, entrar, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento };
+  window.SoloiaConta = { sessao, entrar, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
+    guardarLaudo, listarLaudos, lerLaudo, linkPdf, baixarPdf, apagarLaudo };
 })();
