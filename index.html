@@ -104,12 +104,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   header{padding:22px;text-align:center;border-bottom:1px solid rgba(255,255,255,.06);position:relative}
   
   /* Topo do site proprio (fora do Wix) */
-  .topo{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:rgba(11,16,32,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+  .topo{position:sticky;top:0;z-index:50;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;padding:10px clamp(12px,3vw,40px);background:rgba(11,16,32,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
   .topo-marca{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:700;font-size:18px;letter-spacing:.2px}
   .topo-marca:hover{color:#fff}
   .topo-marca img{width:34px;height:34px;border-radius:50%}
   .topo-marca b{color:#7cc35b}
-  .topo-acoes{display:flex;align-items:center;gap:10px}
+  .topo-acoes{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+  .topo-marca{justify-self:start}
+  .topo-centro{justify-self:center;display:flex}
   .topo-carregando{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
   .topo-creditos{display:flex;align-items:center;gap:6px;height:38px;padding:0 6px 0 14px;border:1px solid #24406e;border-radius:999px;background:#0f1a31;color:#e9efff;text-decoration:none;font-size:14px;white-space:nowrap}
   .topo-creditos:hover{border-color:#2a7fff;color:#fff}
@@ -137,6 +139,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   body.site-proprio #creditos-container{display:none !important}
   body.site-proprio #logoImg{display:none}
   body.site-proprio header{padding-top:28px}
+  body.site-proprio .wrap{min-height:calc(100dvh - 60px)}
   @media (max-width:600px){
     .topo{padding:8px 12px}
     .topo-marca span{display:none}
@@ -410,9 +413,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-TML6MBNM"
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
+<!-- Topo do site proprio (so fora do Wix): marca, creditos e menu da conta -->
+<nav id="contaBar" class="topo" hidden></nav>
 <div class="wrap">
-  <!-- Topo do site proprio (so fora do Wix): marca, creditos e menu da conta -->
-  <nav id="contaBar" class="topo" hidden></nav>
   <header>
     <!-- Créditos no topo direito -->
     <div id="creditos-container">
@@ -1096,7 +1099,7 @@ function renderCreditos(total) {
 
   const creditosAbaixo = document.getElementById('creditosAbaixo');
   if (creditosAbaixo) {
-    creditosAbaixo.innerHTML = String(total ?? 0);
+    creditosAbaixo.textContent = Number(total ?? 0).toLocaleString('pt-BR');
   }
   
   console.log('[Solo+IA HTML] Créditos (render):', total);
@@ -1191,11 +1194,11 @@ async function iniciarConta() {
   const marca = '<a class="topo-marca" href="./" title="Nova análise"><img src="icone.png" alt="" width="34" height="34"><span>Solo<b>+</b>IA</span></a>';
   const botaoGoogle = id => `<button type="button" class="botao-google" id="${id}">${ICONE_GOOGLE}<span>Entrar com Google</span></button>`;
   bar.hidden = false;
-  bar.innerHTML = marca + '<div class="topo-acoes"><span class="topo-carregando" aria-label="Carregando"></span></div>';
+  bar.innerHTML = marca + '<div class="topo-centro"></div><div class="topo-acoes"><span class="topo-carregando" aria-label="Carregando"></span></div>';
 
   const auth = await window.SoloiaConta.sessao();
   if (!auth.isLogged) {
-    bar.innerHTML = marca + `<div class="topo-acoes">${botaoGoogle('btnEntrar')}</div>`;
+    bar.innerHTML = marca + `<div class="topo-centro"></div><div class="topo-acoes">${botaoGoogle('btnEntrar')}</div>`;
     document.getElementById('btnEntrar').addEventListener('click', () => window.SoloiaConta.entrar());
     const aviso = document.getElementById('formAviso');
     if (aviso) {
@@ -1211,11 +1214,13 @@ async function iniciarConta() {
   const avatar = auth.foto
     ? `<img src="${escapeHtml(auth.foto)}" alt="" referrerpolicy="no-referrer">`
     : escapeHtml(inicial);
-  bar.innerHTML = marca + `<div class="topo-acoes">
+  bar.innerHTML = marca + `<div class="topo-centro">
       <a class="topo-creditos" href="${LINK_CREDITOS}" target="_top" rel="noopener" title="Comprar créditos">
         <span class="topo-creditos-num" id="creditosPill">${Number(auth.creditos || 0).toLocaleString('pt-BR')}</span>
         <span class="topo-creditos-rot">créditos</span><span class="topo-comprar">+ Comprar</span>
       </a>
+    </div>
+    <div class="topo-acoes">
       <button type="button" class="topo-link" id="btnHistorico">Minhas análises</button>
       <div class="topo-conta">
         <button type="button" class="topo-avatar" id="btnConta" aria-haspopup="menu" aria-expanded="false" title="${escapeHtml(auth.email || '')}">${avatar}</button>
