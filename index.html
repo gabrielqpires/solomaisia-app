@@ -154,6 +154,28 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .pill{display:inline-flex;gap:8px;border:1px dashed #24324a;padding:6px 10px;border-radius:10px;color:#bcdcff;font-size:13px}
   .muted{color:#9bb4d6}
   .report .blurred-lock{filter:blur(6px);pointer-events:none}
+
+  /* Relatorio: tabelas legiveis e abas */
+  .msg.ai:has(.report){max-width:100%;width:100%;white-space:normal}
+  .report{white-space:normal;line-height:1.5}
+  .report h2{font-size:19px;margin:6px 0 10px}
+  .report h3{font-size:16px;margin:18px 0 8px;color:#dfeaff}
+  .report p{color:#dfeaff;margin:8px 0}
+  .report ul{margin:6px 0;padding-left:20px}
+  .report li{margin:4px 0}
+  .report table{display:block;overflow-x:auto;max-width:100%;border-collapse:collapse;margin:10px 0;font-size:14px}
+  .report th,.report td{border:1px solid #24324a;padding:8px 12px;text-align:left;vertical-align:top}
+  .report th{background:#12203b;color:#bcdcff;font-weight:600;white-space:nowrap}
+  .report tr:nth-child(even) td{background:#0c162b}
+  .report td:nth-child(2){white-space:nowrap;font-weight:600}
+  .report td.cls{font-weight:600}
+  .report td.cls-baixo{color:#ff9b9b}
+  .report td.cls-medio{color:#f3d57a}
+  .report td.cls-alto{color:#8fe0a8}
+  .abas{display:flex;gap:6px;border-bottom:1px solid #24324a;margin-bottom:10px}
+  .aba{background:none;box-shadow:none;border:0;border-bottom:3px solid transparent;border-radius:0;padding:10px 14px;color:#9bb4d6;font-size:15px}
+  .aba.ativa{color:#fff;border-bottom-color:#2a7fff}
+  @media(max-width:600px){.report th,.report td{padding:6px 8px;font-size:13px}.report td:nth-child(2){white-space:normal}}
   
   /* Estilo para mensagem de erro de créditos - AJUSTADO */
 /* Estilo para mensagem de erro de créditos - AJUSTADO */
@@ -823,9 +845,30 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
         cultura: culture,
         membro_id: auth?.memberId || 'guest'
       });
-      const bubble = addMsg('ai', `<div class="report"><div class="type-target"></div></div>`);
-      const target = bubble.querySelector('.type-target');
-      await mdTypewriter(target, (data.text || ''), { charDelay: 6, renderEvery: 24 });
+      const texto = data.text || '';
+      const partes = texto.split('<!--RECOMENDACAO-->');
+      if (partes.length === 2) {
+        // Relatorio do motor em duas abas: Diagnostico e Recomendacao
+        const bubble = addMsg('ai', `<div class="report report-abas">
+          <div class="abas" role="tablist">
+            <button type="button" role="tab" class="aba ativa" data-aba="diag" aria-selected="true">Diagnóstico</button>
+            <button type="button" role="tab" class="aba" data-aba="rec" aria-selected="false">Recomendação</button>
+          </div>
+          <div class="painel" data-painel="diag"><div class="type-target"></div></div>
+          <div class="painel" data-painel="rec" hidden>${renderMD(partes[1])}</div>
+        </div>`);
+        bubble.querySelectorAll('.aba').forEach(b => b.addEventListener('click', () => {
+          bubble.querySelectorAll('.aba').forEach(x => { const on = x === b; x.classList.toggle('ativa', on); x.setAttribute('aria-selected', String(on)); });
+          bubble.querySelectorAll('.painel').forEach(p => { p.hidden = p.dataset.painel !== b.dataset.aba; });
+          trackEvent('aba_relatorio', { aba: b.dataset.aba });
+        }));
+        colorirClasses(bubble);
+        await mdTypewriter(bubble.querySelector('.type-target'), partes[0].replace('<!--DIAGNOSTICO-->', ''), { charDelay: 4, renderEvery: 24 });
+        colorirClasses(bubble);
+      } else {
+        const bubble = addMsg('ai', `<div class="report"><div class="type-target"></div></div>`);
+        await mdTypewriter(bubble.querySelector('.type-target'), texto, { charDelay: 6, renderEvery: 24 });
+      }
       console.log('[Solo+IA] ✅ Typewriter concluído!');
       
       if (typeof data.creditos === 'number') {
@@ -911,6 +954,15 @@ window.addEventListener('message', (event) => {
     }
   }
 });
+
+// Classe de fertilidade colorida nas tabelas do relatorio (Muito baixo/Baixo, Medio, Alto/Muito alto)
+function colorirClasses(el) {
+  const cor = { 'muito baixo': 'cls-baixo', 'baixo': 'cls-baixo', 'médio': 'cls-medio', 'alto': 'cls-alto', 'muito alto': 'cls-alto' };
+  el.querySelectorAll('.report td').forEach(td => {
+    const c = cor[td.textContent.trim().toLowerCase()];
+    if (c) td.classList.add('cls', c);
+  });
+}
 
 function renderMD(md) {
   const html = marked.parse(String(md || ''));
