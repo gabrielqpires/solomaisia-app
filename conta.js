@@ -57,7 +57,9 @@
       const resp = await fetch(SESSAO_URL, { method: 'POST', body: new URLSearchParams({ token: s.access_token }) });
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok || !d.ok || !d.upload?.sig) return { ...DESLOGADO, email: s.user?.email || null };
-      const auth = { isLogged: true, memberId: d.memberId, email: d.email, creditos: Number(d.creditos) || 0, upload: d.upload };
+      const meta = s.user?.user_metadata || {};
+      const auth = { isLogged: true, memberId: d.memberId, email: d.email, creditos: Number(d.creditos) || 0, upload: d.upload,
+        nome: meta.full_name || meta.name || null, foto: meta.avatar_url || meta.picture || null };
       cache = { token: s.access_token, auth };
       return auth;
     } catch (e) {

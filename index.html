@@ -10,6 +10,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <!-- End Google Tag Manager -->
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/png" href="favicon.png">
   <title>Solo+IA — Inteligência no campo</title>
 
   <!-- Markdown + sanitização -->
@@ -102,22 +103,56 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .wrap{max-width:900px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
   header{padding:22px;text-align:center;border-bottom:1px solid rgba(255,255,255,.06);position:relative}
   
-  /* Conta (site proprio, fora do Wix) */
-  .conta-bar{position:absolute;top:18px;left:22px;display:flex;align-items:center;gap:10px;font-size:14px;max-width:calc(100% - 220px)}
-  .conta-email{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+  /* Topo do site proprio (fora do Wix) */
+  .topo{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:rgba(11,16,32,.86);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.07)}
+  .topo-marca{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none;font-weight:700;font-size:18px;letter-spacing:.2px}
+  .topo-marca:hover{color:#fff}
+  .topo-marca img{width:34px;height:34px;border-radius:50%}
+  .topo-marca b{color:#7cc35b}
+  .topo-acoes{display:flex;align-items:center;gap:10px}
+  .topo-carregando{width:18px;height:18px;border:2px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite}
+  .topo-creditos{display:flex;align-items:center;gap:6px;height:38px;padding:0 6px 0 14px;border:1px solid #24406e;border-radius:999px;background:#0f1a31;color:#e9efff;text-decoration:none;font-size:14px;white-space:nowrap}
+  .topo-creditos:hover{border-color:#2a7fff;color:#fff}
+  .topo-creditos-num{font-weight:700;font-variant-numeric:tabular-nums}
+  .topo-creditos-rot{color:#a9b8d6}
+  .topo-comprar{margin-left:4px;padding:5px 10px;border-radius:999px;background:#1d3a6b;color:#dfeaff;font-size:12.5px;font-weight:600}
+  .topo-creditos:hover .topo-comprar{background:#2a7fff;color:#fff}
+  .topo-link{background:none;box-shadow:none;border:0;color:#c9d6ee;font-size:14px;padding:8px 10px;border-radius:10px;cursor:pointer}
+  .topo-link:hover{background:#16223d;color:#fff}
+  .topo-conta{position:relative}
+  .topo-avatar{width:38px;height:38px;padding:0;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#2a7fff;color:#fff;font-weight:700;font-size:16px;box-shadow:none;border:2px solid #24406e;cursor:pointer}
+  .topo-avatar:hover,.topo-avatar[aria-expanded="true"]{border-color:#7fb0ff}
+  .topo-avatar img{width:100%;height:100%;object-fit:cover}
+  .topo-menu{position:absolute;right:0;top:calc(100% + 8px);min-width:240px;background:#0f1729;border:1px solid #24324a;border-radius:14px;box-shadow:0 18px 40px rgba(0,0,0,.45);padding:6px;display:flex;flex-direction:column}
+  .topo-menu[hidden]{display:none}
+  .topo-menu-cab{display:flex;flex-direction:column;gap:2px;padding:10px 12px 12px;border-bottom:1px solid #1f2b42;margin-bottom:4px;font-size:14px;color:#fff}
+  .topo-menu-cab span{color:#a9b8d6;font-size:13px;overflow:hidden;text-overflow:ellipsis}
+  .topo-menu button,.topo-menu a{display:block;width:100%;text-align:left;background:none;box-shadow:none;border:0;border-radius:9px;padding:10px 12px;color:#e9efff;font-size:14px;font-weight:400;text-decoration:none;cursor:pointer}
+  .topo-menu button:hover,.topo-menu a:hover{background:#16223d;color:#fff}
+  .topo-menu hr{border:0;border-top:1px solid #1f2b42;margin:4px 0}
+  .topo-menu .sair{color:#ffb4b4}
+  .botao-google{display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;box-shadow:none;border:1px solid #dadce0;padding:9px 16px;font-size:14px;font-weight:600;border-radius:999px;cursor:pointer}
+  .botao-google:hover{background:#f7f8fa}
+  .aviso-login{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;text-align:center}
+  body.site-proprio #creditos-container{display:none !important}
+  body.site-proprio #logoImg{display:none}
+  body.site-proprio header{padding-top:28px}
+  @media (max-width:600px){
+    .topo{padding:8px 12px}
+    .topo-marca span{display:none}
+    .topo-link{display:none}
+    .topo-creditos-rot{display:none}
+    .topo-creditos{padding-left:12px}
+  }
   .botao-sec{background:#16223d;box-shadow:none;padding:8px 12px;font-size:14px;border-radius:10px}
   .botao-link{background:none;box-shadow:none;border:0;color:#8fc1ff;padding:4px;font-size:14px;cursor:pointer;text-decoration:underline}
-  .botao-google{background:#fff;color:#1f2937;box-shadow:none;padding:8px 14px;font-size:14px;border-radius:10px;font-weight:600}
-  .aviso-form .botao-google{margin-left:8px}
-  @media (max-width:600px){
-    .conta-bar{position:static;justify-content:center;flex-wrap:wrap;max-width:none;margin:0 auto 10px}
-    .conta-email{max-width:60vw}
-  }
-  .historico{padding:24px 16px;max-width:860px;width:100%;margin:0 auto}
-  .historico-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-  .historico-topo h2{margin:0;font-size:20px}
+  .historico{padding:28px 16px;max-width:860px;width:100%;margin:0 auto}
+  .historico-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .historico-topo h2{margin:0;font-size:22px}
   .historico-lista{display:flex;flex-direction:column;gap:8px}
-  .historico-item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"cultura data" "detalhe data";gap:2px 12px;text-align:left;background:#0c1222;border:1px solid #1f3152;border-radius:12px;padding:12px 14px;box-shadow:none;color:#e9efff;cursor:pointer}
+  .historico-vazio{text-align:center;padding:40px 16px;border:1px dashed #24324a;border-radius:14px}
+  .historico-vazio p{margin:4px 0}
+  .historico-item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"cultura data" "detalhe data";gap:2px 12px;text-align:left;background:#0c1222;border:1px solid #1f3152;border-radius:12px;padding:14px 16px;box-shadow:none;color:#e9efff;cursor:pointer}
   .historico-item:hover{border-color:#2a7fff}
   .h-cultura{grid-area:cultura;font-weight:700}
   .h-detalhe{grid-area:detalhe;color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -376,9 +411,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 <div class="wrap">
+  <!-- Topo do site proprio (so fora do Wix): marca, creditos e menu da conta -->
+  <nav id="contaBar" class="topo" hidden></nav>
   <header>
-    <!-- Conta (so fora do Wix): entrar/sair e Minhas analises -->
-    <div id="contaBar" class="conta-bar" hidden></div>
     <!-- Créditos no topo direito -->
     <div id="creditos-container">
       <span class="icon"></span>
@@ -388,7 +423,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     </div>
     
     <img
-  src="https://static.wixstatic.com/media/74cda6_7148ea07da184995b6c4fedbcf6f5790~mv2.png"
+  src="logo.png"
   alt="Solo+IA"
   id="logoImg"
   title="Nova análise"
@@ -1056,6 +1091,9 @@ function renderCreditos(total) {
     creditosLink._trackListener = trackListener;
   }
   
+  const pill = document.getElementById('creditosPill');
+  if (pill) pill.textContent = Number(total ?? 0).toLocaleString('pt-BR');
+
   const creditosAbaixo = document.getElementById('creditosAbaixo');
   if (creditosAbaixo) {
     creditosAbaixo.innerHTML = String(total ?? 0);
@@ -1136,38 +1174,78 @@ function montarRelatorio(el, texto, cultura) {
   acoesRelatorio(el, cultura);
 }
 
-// Site proprio (fora do Wix): barra da conta, aviso de login e Minhas analises
+// Site proprio (fora do Wix): barra do topo (marca, creditos, menu da conta), aviso de login e Minhas analises
+const LINK_CREDITOS = 'https://www.solomaisia.com.br/creditos';
+const ICONE_GOOGLE = '<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
 async function iniciarConta() {
   if (window.SOLOIA_EMBUTIDO || !window.SoloiaConta) return;
   // window.escapeHtml so e definido depois do primeiro askAuth; aqui usa a propria
   const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  document.body.classList.add('site-proprio');
   const bar = document.getElementById('contaBar');
-  const credCont = document.getElementById('creditos-container');
   const hist = document.getElementById('historico');
   const lista = document.getElementById('historicoLista');
   const ver = document.getElementById('historicoVer');
-  const partes = ['hero', 'chat', 'etapas'].map(id => document.getElementById(id));
+  const partes = ['hero', 'chat', 'etapas'].map(id => document.getElementById(id)).concat(document.querySelector('.wrap > header'));
+  const marca = '<a class="topo-marca" href="./" title="Nova análise"><img src="icone.png" alt="" width="34" height="34"><span>Solo<b>+</b>IA</span></a>';
+  const botaoGoogle = id => `<button type="button" class="botao-google" id="${id}">${ICONE_GOOGLE}<span>Entrar com Google</span></button>`;
   bar.hidden = false;
-  bar.innerHTML = '<span class="muted">Carregando…</span>';
+  bar.innerHTML = marca + '<div class="topo-acoes"><span class="topo-carregando" aria-label="Carregando"></span></div>';
 
   const auth = await window.SoloiaConta.sessao();
   if (!auth.isLogged) {
-    if (credCont) credCont.style.display = 'none';
-    bar.innerHTML = '<button type="button" class="botao-google" id="btnEntrar">Entrar com Google</button>';
+    bar.innerHTML = marca + `<div class="topo-acoes">${botaoGoogle('btnEntrar')}</div>`;
     document.getElementById('btnEntrar').addEventListener('click', () => window.SoloiaConta.entrar());
     const aviso = document.getElementById('formAviso');
     if (aviso) {
       aviso.hidden = false;
-      aviso.innerHTML = 'Entre com sua conta Google para usar o Solo+IA. <button type="button" class="botao-google" id="btnEntrar2">Entrar com Google</button>';
+      aviso.classList.add('aviso-login');
+      aviso.innerHTML = `<span>Entre com sua conta Google para enviar sua análise.</span>${botaoGoogle('btnEntrar2')}`;
       document.getElementById('btnEntrar2').addEventListener('click', () => window.SoloiaConta.entrar());
     }
     return;
   }
+
+  const inicial = (auth.nome || auth.email || '?').trim().charAt(0).toUpperCase();
+  const avatar = auth.foto
+    ? `<img src="${escapeHtml(auth.foto)}" alt="" referrerpolicy="no-referrer">`
+    : escapeHtml(inicial);
+  bar.innerHTML = marca + `<div class="topo-acoes">
+      <a class="topo-creditos" href="${LINK_CREDITOS}" target="_top" rel="noopener" title="Comprar créditos">
+        <span class="topo-creditos-num" id="creditosPill">${Number(auth.creditos || 0).toLocaleString('pt-BR')}</span>
+        <span class="topo-creditos-rot">créditos</span><span class="topo-comprar">+ Comprar</span>
+      </a>
+      <button type="button" class="topo-link" id="btnHistorico">Minhas análises</button>
+      <div class="topo-conta">
+        <button type="button" class="topo-avatar" id="btnConta" aria-haspopup="menu" aria-expanded="false" title="${escapeHtml(auth.email || '')}">${avatar}</button>
+        <div class="topo-menu" id="menuConta" role="menu" hidden>
+          <div class="topo-menu-cab">${auth.nome ? `<strong>${escapeHtml(auth.nome)}</strong>` : ''}<span>${escapeHtml(auth.email || '')}</span></div>
+          <button type="button" role="menuitem" data-acao="historico">Minhas análises</button>
+          <a role="menuitem" href="${LINK_CREDITOS}" target="_top" rel="noopener">Comprar créditos</a>
+          <button type="button" role="menuitem" data-acao="nova">Nova análise</button>
+          <hr>
+          <button type="button" role="menuitem" data-acao="sair" class="sair">Sair</button>
+        </div>
+      </div>
+    </div>`;
   renderCreditos(auth.creditos);
-  bar.innerHTML = `<button type="button" class="botao-sec" id="btnHistorico">Minhas análises</button>
-    <span class="conta-email" title="${escapeHtml(auth.email || '')}">${escapeHtml(auth.email || '')}</span>
-    <button type="button" class="botao-link" id="btnSair">Sair</button>`;
-  document.getElementById('btnSair').addEventListener('click', () => window.SoloiaConta.sair());
+
+  const btnConta = document.getElementById('btnConta');
+  btnConta.querySelector('img')?.addEventListener('error', ev => ev.target.replaceWith(document.createTextNode(inicial)));
+  const menu = document.getElementById('menuConta');
+  const abrirMenu = on => { menu.hidden = !on; btnConta.setAttribute('aria-expanded', String(on)); };
+  btnConta.addEventListener('click', ev => { ev.stopPropagation(); abrirMenu(menu.hidden); });
+  document.addEventListener('click', ev => { if (!menu.hidden && !menu.contains(ev.target)) abrirMenu(false); });
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape') abrirMenu(false); });
+  menu.addEventListener('click', ev => {
+    const acao = ev.target.closest('[data-acao]')?.dataset.acao;
+    if (!acao) return;
+    abrirMenu(false);
+    if (acao === 'sair') window.SoloiaConta.sair();
+    else if (acao === 'historico') abrirLista();
+    else if (acao === 'nova') location.href = './';
+  });
 
   const fmt = iso => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
   const guardados = partes.map(el => el ? el.style.display : '');
@@ -1184,9 +1262,10 @@ async function iniciarConta() {
     ver.hidden = true; ver.innerHTML = '';
     lista.hidden = false;
     lista.innerHTML = '<p class="muted">Carregando…</p>';
+    try { window.scrollTo({ top: 0 }); } catch (_) {}
     try {
       const itens = await window.SoloiaConta.listar();
-      if (!itens.length) { lista.innerHTML = '<p class="muted">Nenhuma análise ainda. As interpretações geradas aparecem aqui.</p>'; return; }
+      if (!itens.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhuma análise ainda.</p><p class="muted">As interpretações que você gerar aparecem aqui.</p></div>'; return; }
       lista.innerHTML = itens.map(i => `<button type="button" class="historico-item" data-id="${Number(i.id)}">
           <span class="h-cultura">${escapeHtml(i.cultura || 'Análise')}</span>
           <span class="h-detalhe">${escapeHtml([i.amostra ? 'Amostra ' + i.amostra : '', i.arquivo || ''].filter(Boolean).join(' · '))}</span>
