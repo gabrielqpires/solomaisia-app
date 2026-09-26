@@ -1,0 +1,175 @@
+// Tela de confirmacao dos valores lidos do laudo (antes de gastar creditos).
+// O agronomo confere, corrige valor e titulo (lista fechada de campos) e as contas do laboratorio
+// sao refeitas a cada alteracao. Contas: lib/validar-laudo.mjs (copia do motor-agronomico, mesmos testes).
+import { validarLaudo } from './lib/validar-laudo.mjs';
+import { lerNumero, FAIXAS } from './lib/normalizar.mjs';
+
+const CAMPOS = [
+  ['argilaPercentual', 'Argila', '%'],
+  ['phAgua', 'pH em água', ''],
+  ['indiceSmp', 'Índice SMP', ''],
+  ['fosforoMgDm3', 'Fósforo (P)', 'mg/dm³'],
+  ['potassioMgDm3', 'Potássio (K)', 'mg/dm³'],
+  ['potassioCmolcDm3', 'Potássio (K)', 'cmolc/dm³'],
+  ['materiaOrganicaPercentual', 'Matéria orgânica', '%'],
+  ['carbonoOrganicoPercentual', 'Carbono orgânico', '%'],
+  ['calcioCmolcDm3', 'Cálcio (Ca)', 'cmolc/dm³'],
+  ['magnesioCmolcDm3', 'Magnésio (Mg)', 'cmolc/dm³'],
+  ['alTrocavelCmolcDm3', 'Alumínio trocável (Al)', 'cmolc/dm³'],
+  ['hAlCmolcDm3', 'H+Al (acidez potencial)', 'cmolc/dm³'],
+  ['somaBasesCmolcDm3', 'Soma de bases (SB)', 'cmolc/dm³'],
+  ['ctcEfetivaCmolcDm3', 'CTC efetiva', 'cmolc/dm³'],
+  ['ctcPh7CmolcDm3', 'CTC pH 7', 'cmolc/dm³'],
+  ['saturacaoBasesPercentual', 'Saturação por bases (V)', '%'],
+  ['saturacaoAlPercentual', 'Saturação por Al (m)', '%'],
+  ['feOxalatoGDm3', 'Ferro (oxalato)', 'g/dm³'],
+];
+const INFO = Object.fromEntries(CAMPOS.map(([k, nome, un]) => [k, { nome, un }]));
+const UNIDADE_CONTRATO = { '%': '%', '': 'indice', 'mg/dm³': 'mg/dm3', 'cmolc/dm³': 'cmolc/dm3', 'g/dm³': 'g/dm3' };
+const NOMES_CONTA = Object.fromEntries(CAMPOS.map(([k, nome]) => [k, nome]));
+NOMES_CONTA.classeTexturalImpressa = 'Classe textural impressa';
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const br = v => (typeof v === 'number' ? String(Math.round(v * 10000) / 10000).replace('.', ',') : '');
+
+function linhasDe(laudo) {
+  return Object.entries(laudo.campos || {}).filter(([k]) => INFO[k]).map(([k, c]) => ({
+    campo: k,
+    texto: c.valor === null && c.limite ? (c.textoOriginal || `<${br(c.limiteValor)}`) : br(c.valor),
+    lido: c.textoOriginal !== undefined ? `${c.rotuloImpresso ? c.rotuloImpresso + ': ' : ''}${c.textoOriginal}` : (c.origem === 'calculado' ? `calculado: ${c.regra || ''}` : ''),
+    original: c,
+  }));
+}
+
+function montarLaudo(base, linhas, camadaCm) {
+  const campos = {};
+  const erros = [];
+  const usados = new Set();
+  for (const l of linhas) {
+    if (!l.campo) continue;
+    if (usados.has(l.campo)) { erros.push(`${INFO[l.campo].nome} aparece duas vezes.`); continue; }
+    usados.add(l.campo);
+    const n = lerNumero(l.texto);
+    const pagina = l.original?.pagina ?? 1;
+    const unidade = l.campo === 'phAgua' ? 'pH' : UNIDADE_CONTRATO[INFO[l.campo].un];
+    const extra = { ...(l.original?.metodo !== undefined ? { metodo: l.original.metodo } : {}),
+      ...(l.original?.textoOriginal !== undefined ? { textoOriginal: l.original.textoOriginal } : {}) };
+    if (!n) { erros.push(`${INFO[l.campo].nome}: valor "${l.texto}" não é um número.`); continue; }
+    if (n.limite) { campos[l.campo] = { valor: null, limite: n.limite, limiteValor: n.valor, unidade, pagina, ...extra }; continue; }
+    const [min, max] = FAIXAS[l.campo] ?? [0, Infinity];
+    if (n.valor < min || n.valor > max) erros.push(`${INFO[l.campo].nome}: ${br(n.valor)} fora da faixa plausível (${br(min)} a ${br(max)}).`);
+    const editado = !l.original || l.original.valor !== n.valor;
+    campos[l.campo] = { valor: n.valor, unidade, pagina, ...extra, ...(editado ? { editado: true } : {}) };
+  }
+  for (const k of ['argilaPercentual', 'fosforoMgDm3', 'potassioMgDm3', 'ctcPh7CmolcDm3']) {
+    if (!campos[k]) erros.push(`${INFO[k].nome} é obrigatório para interpretar P e K.`);
+  }
+  const laudo = { ...base, camadaCm: camadaCm || null, campos };
+  delete laudo.problemas;
+  return { laudo, erros };
+}
+
+function opcoesCampo(atual) {
+  return '<option value="">— escolha —</option>' + CAMPOS.map(([k, nome, un]) =>
+    `<option value="${k}"${k === atual ? ' selected' : ''}>${esc(nome)}${un ? ' (' + esc(un) + ')' : ''}</option>`).join('');
+}
+
+/**
+ * Abre a tela. dados = resposta do webhook soloia-ler. Chama onConfirmar({ laudo, llamaJobId }) ou onVoltar().
+ */
+export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16 }) {
+  let indice = 0;
+  let linhas = [];
+  let camada = null;
+
+  function carregarAmostra(i) {
+    indice = i;
+    const a = dados.amostras[i];
+    linhas = linhasDe(a.laudo);
+    camada = a.laudo.camadaCm || '';
+    render();
+  }
+
+  function atual() {
+    return montarLaudo(dados.amostras[indice].laudo, linhas, camada);
+  }
+
+  function renderContas() {
+    const { laudo, erros } = atual();
+    const v = validarLaudo(laudo);
+    const itens = v.contas.map(c => `<li class="conta ${c.ok ? 'ok' : 'falha'}">${c.ok ? '✓' : '✗'} ${esc(c.nome)}: calculado ${br(c.calculado)} · laudo ${br(c.impresso)}</li>`).join('');
+    const problemas = [
+      ...erros.map(e => ({ nivel: 'bloqueio', texto: e })),
+      ...v.problemas.filter(p => p.conta).map(p => ({ nivel: p.nivel, texto: `${p.conta} não fecha${p.suspeitos?.length ? ' — confira: ' + p.suspeitos.map(s => NOMES_CONTA[s] || s).join(', ') : ''}.` })),
+      ...v.problemas.filter(p => !p.conta && p.nivel === 'aviso').map(p => ({ nivel: 'aviso', texto: `${NOMES_CONTA[p.campo] || p.campo}: ausente no laudo; parte do relatório fica pendente.` })),
+    ];
+    el.querySelector('.cf-contas').innerHTML = (itens ? `<ul>${itens}</ul>` : '<p class="muted">O laudo não traz dados suficientes para refazer as contas; confira os valores com atenção.</p>')
+      + problemas.map(p => `<div class="cf-prob ${p.nivel}">${p.nivel === 'bloqueio' ? '⚠️' : 'ℹ️'} ${esc(p.texto)}</div>`).join('');
+    const invalido = erros.length > 0;
+    const conferiu = el.querySelector('#cfConferi').checked;
+    const btn = el.querySelector('#cfConfirmar');
+    btn.disabled = invalido || !conferiu;
+    el.querySelector('.cf-dica').textContent = invalido ? 'Corrija os valores marcados para continuar.'
+      : !conferiu ? 'Marque que conferiu os valores com o PDF para continuar.' : '';
+  }
+
+  function render() {
+    const a = dados.amostras[indice];
+    const seletor = dados.amostras.length > 1 ? `
+      <div class="cf-linha-topo"><label for="cfAmostra">Amostra</label>
+        <select id="cfAmostra">${dados.amostras.map((x, i) => `<option value="${i}"${i === indice ? ' selected' : ''}>${esc(x.laudo.amostra)}${x.laudo.identificacao ? ' — ' + esc(x.laudo.identificacao) : ''}</option>`).join('')}</select></div>` : '';
+    el.innerHTML = `
+      <h2>Confira os valores lidos do laudo</h2>
+      <p class="muted cf-sub">${esc(dados.laboratorio || 'Laboratório não identificado')}${dados.localizacao ? ' · ' + esc(dados.localizacao) : ''}. Corrija qualquer valor ou título lido errado antes de gerar a interpretação.</p>
+      ${seletor}
+      <div class="cf-linha-topo"><label for="cfCamada">Profundidade da amostra</label>
+        <select id="cfCamada">
+          <option value="">Não informada no laudo</option>
+          ${['0-10', '0-20', '10-20', '0-5'].map(c => `<option value="${c}"${c === camada ? ' selected' : ''}>${c} cm</option>`).join('')}
+        </select></div>
+      <div class="cf-tabela" role="table">
+        <div class="cf-cab" role="row"><span>Campo</span><span>Valor</span><span>Lido no laudo</span><span></span></div>
+        ${linhas.map((l, i) => `
+          <div class="cf-row" role="row" data-i="${i}">
+            <select class="cf-campo" aria-label="Campo">${opcoesCampo(l.campo)}</select>
+            <div class="cf-valor"><input class="cf-num" inputmode="decimal" value="${esc(l.texto)}" aria-label="Valor"><span class="cf-un">${esc(INFO[l.campo]?.un ?? '')}</span></div>
+            <span class="cf-lido" title="${esc(l.lido)}">${esc(l.lido || '—')}</span>
+            <button type="button" class="cf-remover" aria-label="Remover linha">×</button>
+          </div>`).join('')}
+      </div>
+      <button type="button" class="cf-add">+ adicionar valor</button>
+      <div class="cf-contas" aria-live="polite"></div>
+      <label class="cf-conferi"><input id="cfConferi" type="checkbox"> Conferi os valores com o PDF do laudo.</label>
+      <div class="cf-dica muted"></div>
+      <div class="actions">
+        <button type="button" class="cf-voltar">Voltar</button>
+        <button type="button" id="cfConfirmar">Confirmar e gerar interpretação (${custo} créditos)</button>
+      </div>`;
+    el.querySelector('#cfAmostra')?.addEventListener('change', e => carregarAmostra(Number(e.target.value)));
+    el.querySelector('#cfCamada').addEventListener('change', e => { camada = e.target.value; renderContas(); });
+    el.querySelectorAll('.cf-row').forEach((row) => {
+      const i = Number(row.dataset.i);
+      row.querySelector('.cf-campo').addEventListener('change', (e) => {
+        linhas[i].campo = e.target.value;
+        row.querySelector('.cf-un').textContent = INFO[e.target.value]?.un ?? '';
+        renderContas();
+      });
+      row.querySelector('.cf-num').addEventListener('input', (e) => { linhas[i].texto = e.target.value; renderContas(); });
+      row.querySelector('.cf-remover').addEventListener('click', () => { linhas.splice(i, 1); render(); });
+    });
+    el.querySelector('.cf-add').addEventListener('click', () => { linhas.push({ campo: '', texto: '', lido: '', original: null }); render(); });
+    el.querySelector('#cfConferi').addEventListener('change', renderContas);
+    el.querySelector('.cf-voltar').addEventListener('click', () => onVoltar());
+    el.querySelector('#cfConfirmar').addEventListener('click', () => {
+      const { laudo, erros } = atual();
+      if (erros.length) return;
+      onConfirmar({ laudo, llamaJobId: dados.llamaJobId, validacao: validarLaudo(laudo) });
+    });
+    renderContas();
+  }
+
+  el.hidden = false;
+  carregarAmostra(0);
+}
+
+window.SoloiaConfirmacao = { abrir };
