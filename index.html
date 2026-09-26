@@ -550,7 +550,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <button type="button" id="btnComprar" disabled>Selecione um pacote</button>
     </div>
     <div id="comprarStatus" class="comprar-status" role="status" hidden></div>
-    <p class="muted comprar-nota">Pagamento pelo Mercado Pago. Precisa de mais créditos? Fale com a gente.</p>
+    <p class="muted comprar-nota">Pagamento pelo Mercado Pago. Precisa de mais créditos? <a href="mailto:contato@solomaisia.com.br">Fale com a gente</a>.</p>
   </section>
 
   <footer class="site-footer" aria-hidden="true"></footer>
@@ -1236,6 +1236,12 @@ async function iniciarConta() {
   // window.escapeHtml so e definido depois do primeiro askAuth; aqui usa a propria
   const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   document.body.classList.add('site-proprio');
+  // paginas de texto servidas pelo proprio site (abrem em outra aba para nao perder o formulario)
+  const PAGINAS = { 'https://www.solomaisia.com.br/consentimento': '/consentimento', 'https://www.solomaisia.com.br/pdf-nativo': '/pdf-nativo' };
+  document.querySelectorAll('a[href]').forEach(a => {
+    const novo = PAGINAS[a.getAttribute('href')];
+    if (novo) { a.setAttribute('href', novo); a.setAttribute('target', '_blank'); a.setAttribute('rel', 'noopener'); }
+  });
   const bar = document.getElementById('contaBar');
   const hist = document.getElementById('historico');
   const lista = document.getElementById('historicoLista');
