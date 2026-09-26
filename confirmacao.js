@@ -216,15 +216,13 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
     const lav = ['lvRend', 'lvSistema', 'lvCultivo', 'lvAntec', 'lvExpect'].map(id => [id, el.querySelector('#' + id)?.value]);
     const aberto = el.querySelector('.cf-lavoura')?.open;
     const a = dados.amostras[indice];
-    // Varias amostras: aviso claro + botoes para trocar de amostra (cada uma e uma interpretacao)
+    // Varias amostras: aviso claro + seletor da amostra (cada uma e uma interpretacao)
     const seletor = total > 1 ? `
       <div class="cf-amostras">
         <div class="cf-amostras-tit">Este laudo tem <strong>${total} amostras</strong>.</div>
         <p>Cada amostra vira um relatório separado (${custo} créditos cada). Confira os valores de cada uma e gere <strong>só da selecionada</strong> ou <strong>de todas</strong> no final da página.</p>
-        <div class="cf-chips" role="tablist" aria-label="Amostras do laudo">${dados.amostras.map((x, i) => `
-          <button type="button" role="tab" class="cf-chip${i === indice ? ' ativa' : ''}" data-amostra="${i}" aria-selected="${i === indice}">
-            <span class="cf-chip-n">${i + 1}</span><span class="cf-chip-txt">${esc(rotuloAmostra(x.laudo))}</span></button>`).join('')}
-        </div>
+        <label class="cf-amostra-rot" for="cfAmostra">Amostra que você está conferindo</label>
+        <select id="cfAmostra" class="cf-amostra-sel">${dados.amostras.map((x, i) => `<option value="${i}"${i === indice ? ' selected' : ''}>${i + 1} de ${total} · ${esc(rotuloAmostra(x.laudo))}</option>`).join('')}</select>
       </div>
       <div class="cf-amostra-atual">Valores da amostra <strong>${indice + 1} de ${total}</strong>: ${esc(rotuloAmostra(a.laudo))}</div>` : '';
     el.innerHTML = `
@@ -282,10 +280,7 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
         <button type="button" class="cf-voltar">Voltar</button>
         <button type="button" id="cfConfirmar">Confirmar e gerar interpretação (${custo} créditos)</button>
       </div>`}`;
-    el.querySelectorAll('.cf-chip').forEach(b => b.addEventListener('click', () => {
-      const i = Number(b.dataset.amostra);
-      if (i !== indice) carregarAmostra(i);
-    }));
+    el.querySelector('#cfAmostra')?.addEventListener('change', e => carregarAmostra(Number(e.target.value)));
     el.querySelector('.cf-grupo')?.addEventListener('toggle', e => { microsAberto = e.target.open; });
     el.querySelector('#cfCamada').addEventListener('change', e => { camada = e.target.value; renderContas(); });
     el.querySelectorAll('.cf-row').forEach((row) => {
