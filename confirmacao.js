@@ -102,25 +102,62 @@ function opcoesCampo(atual) {
     `<option value="${k}"${k === atual ? ' selected' : ''}>${esc(nome)}${un ? ' (' + esc(un) + ')' : ''}</option>`).join('');
 }
 
+const rotuloAmostra = l => `${l.amostra || 'Amostra'}${l.identificacao ? ' — ' + l.identificacao : ''}`;
+
 /**
- * Abre a tela. dados = resposta do webhook soloia-ler. Chama onConfirmar({ laudo, llamaJobId }) ou onVoltar().
+ * Abre a tela. dados = resposta do webhook soloia-ler.
+ * onConfirmar({ itens: [{ laudo, validacao }], llamaJobId, personalizacao }) — um item por amostra a interpretar
+ * (so a selecionada ou todas). saldo() = creditos do usuario (ou null se desconhecido); onComprar() abre a compra.
  */
-export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = '' }) {
+export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () => null, custo = 16, cultura = '' }) {
+  const total = dados.amostras.length;
   let indice = 0;
   let microsAberto = false;
   let linhas = [];
   let camada = null;
+  // edicoes de cada amostra ficam guardadas ao trocar de amostra
+  const estados = {};
+  let carregado = false;
 
   function carregarAmostra(i) {
+    if (carregado) estados[indice] = { linhas, camada };
+    carregado = true;
     indice = i;
     const a = dados.amostras[i];
-    linhas = linhasDe(a.laudo);
-    camada = a.laudo.camadaCm || '';
+    const s = estados[i];
+    linhas = s ? s.linhas : linhasDe(a.laudo);
+    camada = s ? s.camada : (a.laudo.camadaCm || '');
     render();
   }
 
   function atual() {
     return montarLaudo(dados.amostras[indice].laudo, linhas, camada);
+  }
+
+  function laudoDaAmostra(i) {
+    if (i === indice) return atual();
+    const s = estados[i];
+    const base = dados.amostras[i].laudo;
+    return montarLaudo(base, s ? s.linhas : linhasDe(base), s ? s.camada : (base.camadaCm || ''));
+  }
+
+  // Creditos: avisa antes de gastar e manda comprar se faltar
+  function faltaCredito(n) {
+    const s = saldo();
+    return typeof s === 'number' && s < n * custo ? n * custo - s : 0;
+  }
+  function avisarCreditos(n) {
+    const falta = faltaCredito(n);
+    const box = el.querySelector('.cf-sem-creditos');
+    if (!falta) { box.hidden = true; return false; }
+    const s = saldo();
+    box.hidden = false;
+    box.innerHTML = `<div><strong>Créditos insuficientes.</strong> ${n > 1 ? `Analisar as ${n} amostras usa ${n * custo} créditos` : `Esta interpretação usa ${custo} créditos`}
+      e você tem ${Number(s).toLocaleString('pt-BR')}. Faltam ${falta.toLocaleString('pt-BR')}.</div>
+      <button type="button" class="cf-comprar">Comprar créditos</button>`;
+    box.querySelector('.cf-comprar').addEventListener('click', () => onComprar?.());
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return true;
   }
 
   // Dados opcionais da lavoura -> personalizacao do motor (personalizacao.mjs valida de novo no servidor)
@@ -169,6 +206,8 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
     const conferiu = el.querySelector('#cfConferi').checked;
     const btn = el.querySelector('#cfConfirmar');
     btn.disabled = invalido || !conferiu;
+    const todas = el.querySelector('#cfTodas');
+    if (todas) todas.disabled = !conferiu;
     el.querySelector('.cf-dica').textContent = invalido ? 'Corrija os valores marcados para continuar.'
       : !conferiu ? 'Marque que conferiu os valores com o PDF para continuar.' : '';
   }
@@ -177,9 +216,17 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
     const lav = ['lvRend', 'lvSistema', 'lvCultivo', 'lvAntec', 'lvExpect'].map(id => [id, el.querySelector('#' + id)?.value]);
     const aberto = el.querySelector('.cf-lavoura')?.open;
     const a = dados.amostras[indice];
-    const seletor = dados.amostras.length > 1 ? `
-      <div class="cf-linha-topo"><label for="cfAmostra">Amostra</label>
-        <select id="cfAmostra">${dados.amostras.map((x, i) => `<option value="${i}"${i === indice ? ' selected' : ''}>${esc(x.laudo.amostra)}${x.laudo.identificacao ? ' — ' + esc(x.laudo.identificacao) : ''}</option>`).join('')}</select></div>` : '';
+    // Varias amostras: aviso claro + botoes para trocar de amostra (cada uma e uma interpretacao)
+    const seletor = total > 1 ? `
+      <div class="cf-amostras">
+        <div class="cf-amostras-tit">Este laudo tem <strong>${total} amostras</strong>.</div>
+        <p>Cada amostra vira um relatório separado (${custo} créditos cada). Confira os valores de cada uma e gere <strong>só da selecionada</strong> ou <strong>de todas</strong> no final da página.</p>
+        <div class="cf-chips" role="tablist" aria-label="Amostras do laudo">${dados.amostras.map((x, i) => `
+          <button type="button" role="tab" class="cf-chip${i === indice ? ' ativa' : ''}" data-amostra="${i}" aria-selected="${i === indice}">
+            <span class="cf-chip-n">${i + 1}</span><span class="cf-chip-txt">${esc(rotuloAmostra(x.laudo))}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="cf-amostra-atual">Valores da amostra <strong>${indice + 1} de ${total}</strong>: ${esc(rotuloAmostra(a.laudo))}</div>` : '';
     el.innerHTML = `
       <h2>Confira os valores lidos do laudo</h2>
       <p class="muted cf-sub">${esc(dados.laboratorio || 'Laboratório não identificado')}${dados.localizacao ? ' · ' + esc(dados.localizacao) : ''}. Corrija qualquer valor ou título lido errado antes de gerar a interpretação.</p>
@@ -222,13 +269,23 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
           <label>Cultura antecedente<select id="lvAntec"><option value="">Não informada</option><option value="leguminosa">Leguminosa</option><option value="consorciacao_pousio">Consorciação ou pousio</option><option value="graminea">Gramínea</option></select></label>`}
         </div>
       </details>
-      <label class="cf-conferi"><input id="cfConferi" type="checkbox"> Conferi os valores com o PDF do laudo.</label>
+      <label class="cf-conferi"><input id="cfConferi" type="checkbox"> Conferi os valores com o PDF do laudo${total > 1 ? ' (todas as amostras que vou gerar)' : ''}.</label>
       <div class="cf-dica muted"></div>
+      <div class="cf-sem-creditos" role="alert" hidden></div>
+      ${total > 1 ? `
+      <div class="actions cf-acoes-multi">
+        <button type="button" class="cf-voltar">Voltar</button>
+        <button type="button" id="cfConfirmar" class="cf-sec">Gerar só da amostra ${indice + 1} (${custo} créditos)</button>
+        <button type="button" id="cfTodas">Analisar todas as ${total} amostras (${total * custo} créditos)</button>
+      </div>` : `
       <div class="actions">
         <button type="button" class="cf-voltar">Voltar</button>
         <button type="button" id="cfConfirmar">Confirmar e gerar interpretação (${custo} créditos)</button>
-      </div>`;
-    el.querySelector('#cfAmostra')?.addEventListener('change', e => carregarAmostra(Number(e.target.value)));
+      </div>`}`;
+    el.querySelectorAll('.cf-chip').forEach(b => b.addEventListener('click', () => {
+      const i = Number(b.dataset.amostra);
+      if (i !== indice) carregarAmostra(i);
+    }));
     el.querySelector('.cf-grupo')?.addEventListener('toggle', e => { microsAberto = e.target.open; });
     el.querySelector('#cfCamada').addEventListener('change', e => { camada = e.target.value; renderContas(); });
     el.querySelectorAll('.cf-row').forEach((row) => {
@@ -249,7 +306,26 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
       if (erros.length) return;
       const personalizacao = lerLavoura();
       if (personalizacao === null) return;
-      onConfirmar({ laudo, llamaJobId: dados.llamaJobId, validacao: validarLaudo(laudo), personalizacao });
+      if (avisarCreditos(1)) return;
+      onConfirmar({ itens: [{ laudo, validacao: validarLaudo(laudo) }], llamaJobId: dados.llamaJobId, personalizacao });
+    });
+    el.querySelector('#cfTodas')?.addEventListener('click', () => {
+      const itens = [];
+      for (let i = 0; i < total; i++) {
+        const { laudo, erros } = laudoDaAmostra(i);
+        if (erros.length) {
+          // leva para a amostra com problema
+          carregarAmostra(i);
+          el.querySelector('.cf-dica').textContent = `Amostra ${i + 1}: ${erros[0]} Corrija para analisar todas.`;
+          el.querySelector('.cf-dica').scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+        itens.push({ laudo, validacao: validarLaudo(laudo) });
+      }
+      const personalizacao = lerLavoura();
+      if (personalizacao === null) return;
+      if (avisarCreditos(total)) return;
+      onConfirmar({ itens, llamaJobId: dados.llamaJobId, personalizacao });
     });
     for (const [id, valor] of lav) { const c = el.querySelector('#' + id); if (c && valor) c.value = valor; }
     if (aberto) el.querySelector('.cf-lavoura').open = true;

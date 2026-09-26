@@ -162,6 +162,29 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .h-data{grid-area:data;color:var(--muted);font-size:13px;align-self:center}
   .historico-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
   .historico-rel{max-width:100%}
+  /* Varias amostras no laudo */
+  .cf-amostras{margin:14px 0 12px;padding:14px 16px;border:1px solid #2a4f8f;border-radius:14px;background:#0f1d3a}
+  .cf-amostras-tit{font-size:16px;color:#fff;margin-bottom:4px}
+  .cf-amostras p{margin:0 0 12px;font-size:14px;color:#c9d6ee}
+  .cf-chips{display:flex;flex-wrap:wrap;gap:8px}
+  .cf-chip{display:flex;align-items:center;gap:8px;background:#0c1222;border:1.5px solid #24406e;border-radius:999px;padding:6px 12px 6px 6px;box-shadow:none;color:#e9efff;font-size:13.5px;font-weight:500;cursor:pointer;max-width:100%}
+  .cf-chip:hover{border-color:#2a7fff}
+  .cf-chip.ativa{border-color:#2a7fff;background:#16305f;color:#fff}
+  .cf-chip-n{display:inline-grid;place-items:center;min-width:24px;height:24px;border-radius:50%;background:#1d3a6b;font-weight:700;font-size:12.5px}
+  .cf-chip.ativa .cf-chip-n{background:#2a7fff}
+  .cf-chip-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cf-amostra-atual{margin:0 0 12px;padding:8px 12px;border-left:3px solid #2a7fff;background:#0c1528;border-radius:0 8px 8px 0;font-size:14px;color:#c9d6ee}
+  .cf-amostra-atual strong{color:#fff}
+  .cf-acoes-multi{flex-wrap:wrap}
+  .cf-acoes-multi .cf-sec{background:#16223d;box-shadow:none}
+  .cf-sem-creditos{margin:12px 0;padding:14px 16px;border:1px solid #6b4a1a;background:#2a1d0c;border-radius:12px;color:#ffe2b8;font-size:14.5px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .cf-sem-creditos[hidden]{display:none}
+  .cf-sem-creditos strong{color:#fff}
+  .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
+  @media (max-width:600px){
+    .cf-acoes-multi button{width:100%}
+    .cf-chip{font-size:13px}
+  }
   .comprar-intro{margin:0 0 18px;font-size:15px}
   .comprar-intro strong{color:#fff}
   .pacotes{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
@@ -902,10 +925,22 @@ startBtn.addEventListener('click', async () => {
     window.SoloiaConfirmacao.abrir(confEl, dados, {
       cultura: culturaId,
       onVoltar: () => { confEl.hidden = true; formEl.hidden = false; setEtapa(1); document.body.classList.remove('compacto'); },
-      onConfirmar: (conf) => {
-        trackEvent('valores_confirmados', { cultura: culturaId, editados: Object.values(conf.laudo.campos).filter(c => c.editado).length,
-          contas: conf.validacao.status });
-        gerarInterpretacao(f, culture, culturaId, conf);
+      saldo: () => (typeof window.currentCreditos === 'number' ? window.currentCreditos : null),
+      onComprar: () => {
+        trackEvent('comprar_da_confirmacao', { cultura: culturaId });
+        if (window.SoloiaAbrirCompra) window.SoloiaAbrirCompra();
+        else window.open('https://www.solomaisia.com.br/creditos', '_top');
+      },
+      onConfirmar: async (conf) => {
+        const total = conf.itens.length;
+        trackEvent('valores_confirmados', { cultura: culturaId, amostras: total,
+          editados: conf.itens.reduce((n, it) => n + Object.values(it.laudo.campos).filter(c => c.editado).length, 0) });
+        // uma amostra por vez; para se faltar credito ou der erro
+        for (let k = 0; k < total; k++) {
+          const it = conf.itens[k];
+          const r = await gerarInterpretacao(f, culture, culturaId, { ...conf, laudo: it.laudo, validacao: it.validacao }, { indice: k + 1, total });
+          if (r !== 'ok') break;
+        }
       },
     });
   } catch (err) {
@@ -919,14 +954,15 @@ startBtn.addEventListener('click', async () => {
 });
 
 // Passo 2: gerar a interpretacao com os valores confirmados (usa os creditos)
-async function gerarInterpretacao(f, culture, culturaId, conf){
+async function gerarInterpretacao(f, culture, culturaId, conf, lote = null){
   let loader, typing;
+  const rotulo = rotuloAmostra(conf.laudo);
   try{
     trackEvent('botao_enviar_clicado', { arquivo_nome: f.name, arquivo_tamanho: f.size, cultura: culture });
     setEtapa(3);
     document.body.classList.add('compacto');
     toChat();
-    addMsg('me',`Enviei <span class='pill'>📄 ${escapeHtml(f.name)}</span>\nCultura: <b>${escapeHtml(culture)}</b>\nValores conferidos: amostra <b>${escapeHtml(conf.laudo.amostra || '')}</b>`);
+    addMsg('me',`${lote && lote.total > 1 ? `<b>Amostra ${lote.indice} de ${lote.total}</b>\n` : ''}Enviei <span class='pill'>📄 ${escapeHtml(f.name)}</span>\nCultura: <b>${escapeHtml(culture)}</b>\n${escapeHtml(rotulo)}`);
 
     loader = createStagedLoader(STAGES, DURATIONS);
     typing = addMsg('ai', '<div class="espera-dica">Leva cerca de 1 a 2 minutos. Não feche a página.</div>');
@@ -1037,8 +1073,8 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
       if (typeof data.creditos === 'number') {
         renderCreditos(data.creditos);
       }
-      
-      return;
+
+      return 'sem_creditos';
     }
 
     if (!resp.ok || data?.ok === false) {
@@ -1061,7 +1097,7 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
   ${data.rest ? `<div class="blurred-lock" style="margin-top:8px">${renderMD(data.rest)}</div>` : ''}
 </div>`);
       if (data.showPopup) { openLogin(); }
-      return;
+      return 'login';
     }
 
     if (data.mode === 'full' || data.text) {
@@ -1075,7 +1111,7 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
       if (partes.length === 2) {
         // Relatorio do motor em duas abas: Diagnostico e Recomendacao
         const bubble = addMsg('ai', '<div class="relatorio-slot"></div>');
-        montarRelatorio(bubble.querySelector('.relatorio-slot'), texto, culture);
+        montarRelatorio(bubble.querySelector('.relatorio-slot'), texto, culture, (lote && lote.total > 1 ? `${lote.indice} de ${lote.total} · ` : '') + rotulo);
         try { bubble.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
       } else {
         const bubble = addMsg('ai', `<div class="report"><div class="type-target"></div></div>`);
@@ -1086,21 +1122,26 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
       
       if (typeof data.creditos === 'number') {
         renderCreditos(data.creditos);
+      } else if (typeof window.currentCreditos === 'number') {
+        // o fluxo nao devolve o saldo: desconta o que foi usado
+        renderCreditos(Math.max(0, window.currentCreditos - 16));
       }
-      
-      return;
+
+      return 'ok';
     }
 
     console.warn('[Solo+IA] ⚠️ Resposta sem mode conhecido:', data);
     const fbBubble = addMsg('ai', `<div class="report"><div class="type-target"></div></div>`);
     const fbTarget = fbBubble.querySelector('.type-target');
     await typewriter(fbTarget, (data.text||'Sem texto'), 14);
+    return 'ok';
 
   }catch(err){
     try { loader?.stop(); typing?.remove(); } catch(_){}
     console.error('[Solo+IA] ❌ ERRO FATAL:', err);
     console.error('[Solo+IA] ❌ Stack:', err.stack);
     addMsg('ai', `<div class='muted'>⚠️ ${escapeHtml(String(err.message||err))}</div>`);
+    return 'erro';
   }
 }
   });
@@ -1201,14 +1242,23 @@ function chipsDiagnostico(el) {
   (h2 || painel.firstElementChild)?.after(div);
 }
 
-// Relatorio do motor (Diagnostico / Recomendacao) dentro de el; usado no chat e em Minhas analises
-function montarRelatorio(el, texto, cultura) {
+// "122915/19 — 3 - Barragem"
+function rotuloAmostra(laudo) {
+  const l = laudo || {};
+  return `Amostra ${l.amostra || '—'}${l.identificacao ? ' — ' + l.identificacao : ''}`;
+}
+
+// Relatorio do motor (Diagnostico / Recomendacao) dentro de el; usado no chat e em Minhas analises.
+// rotulo: de qual amostra e o relatorio (aparece no topo)
+function montarRelatorio(el, texto, cultura, rotulo = '') {
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const topo = rotulo ? `<div class="relatorio-amostra">${esc(rotulo)}</div>` : '';
   const partes = String(texto || '').split('<!--RECOMENDACAO-->');
   if (partes.length !== 2) {
-    el.innerHTML = `<div class="report">${renderMD(texto || '')}</div>`;
+    el.innerHTML = `<div class="report">${topo}${renderMD(texto || '')}</div>`;
     return;
   }
-  el.innerHTML = `<div class="report report-abas">
+  el.innerHTML = `<div class="report report-abas">${topo}
     <div class="abas" role="tablist">
       <button type="button" role="tab" class="aba ativa" data-aba="diag" aria-selected="true">Diagnóstico</button>
       <button type="button" role="tab" class="aba" data-aba="rec" aria-selected="false">Recomendação</button>
@@ -1353,7 +1403,7 @@ async function iniciarConta() {
       const a = await window.SoloiaConta.abrir(b.dataset.id);
       ver.innerHTML = `<div class="historico-cab"><button type="button" class="botao-link" id="histLista">← Todas as análises</button>
         <span class="muted">${escapeHtml(a.cultura || '')} · ${fmt(a.criado_em)}</span></div><div class="msg ai historico-rel"></div>`;
-      montarRelatorio(ver.querySelector('.historico-rel'), a.texto, a.cultura);
+      montarRelatorio(ver.querySelector('.historico-rel'), a.texto, a.cultura, a.amostra ? 'Amostra ' + a.amostra : '');
       ver.querySelector('#histLista').addEventListener('click', abrirLista);
     } catch (e) {
       ver.innerHTML = '<p class="muted">Não foi possível abrir esta análise.</p>';
@@ -1382,6 +1432,7 @@ async function iniciarConta() {
     if (a.isLogged) { renderCreditos(a.creditos); saldoEl.textContent = Number(a.creditos || 0).toLocaleString('pt-BR'); }
     return a;
   }
+  window.SoloiaAbrirCompra = () => abrirComprar();
   function abrirComprar() {
     mostrarVista('comprar');
     saldoEl.textContent = Number(window.currentCreditos ?? auth.creditos ?? 0).toLocaleString('pt-BR');
