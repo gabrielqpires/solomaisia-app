@@ -1489,6 +1489,8 @@ async function iniciarConta() {
       aviso.innerHTML = `<span>Entre na sua conta para enviar sua análise.</span><button type="button" class="botao-entrar" id="btnEntrar2">Entrar ou criar conta</button>`;
       document.getElementById('btnEntrar2').addEventListener('click', () => abrirLogin());
     }
+    // sem conta nao ha saldo para mostrar
+    document.querySelectorAll('.creditos-info').forEach(el => { el.hidden = true; });
     // "Continuar como Fulano" do Google (so no dominio proprio)
     window.SoloiaConta.sugerirGoogle(() => location.reload(), () => {});
     return;
