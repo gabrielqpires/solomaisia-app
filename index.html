@@ -34,7 +34,59 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .typing .dot:nth-child(4){animation-delay:.30s}
   @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.5}40%{transform:translateY(-4px);opacity:1}}
 
-  :root { --bg:#22252e; --muted:#9bb4d6; --cardGlow:#1b49ff55; --grad:linear-gradient(135deg,#2a7fff,#1b49ff); }
+  :root { --bg:#22252e; --muted:#b8cbe6; --cardGlow:#1b49ff55; --grad:linear-gradient(135deg,#2a7fff,#1b49ff); }
+
+  /* Topo compacto (e ainda menor depois que a analise comeca) */
+  a{color:#8fc1ff}
+  a:hover{color:#bcdcff}
+  #logoImg{cursor:pointer;width:min(230px,62vw);height:auto;display:block;margin:0 auto 4px auto;transition:width .3s}
+  body.compacto #logoImg{width:min(140px,40vw)}
+  header .intro{font-size:14px;max-width:560px;margin:6px auto 0}
+  @media(max-width:600px){
+    #logoImg{width:min(170px,48vw)}
+    header{padding:14px 16px}
+    header h1{font-size:18px;margin-top:4px}
+    header .intro{font-size:13px}
+    .pad{padding:18px}
+  }
+  body.compacto header h1, body.compacto header .intro{display:none}
+  body.compacto header{padding:12px 22px}
+
+  /* Etapas */
+  .etapas{display:flex;justify-content:center;gap:6px;list-style:none;margin:14px auto 0;padding:0 16px;flex-wrap:wrap}
+  .etapas li{display:flex;align-items:center;gap:6px;font-size:13px;color:#8ea5c8;padding:6px 10px;border-radius:999px;border:1px solid #1f3152}
+  .etapas li span{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#1a2a48;font-size:12px;font-weight:700}
+  .etapas li.atual{color:#fff;border-color:#2a7fff;background:#10224a}
+  .etapas li.atual span{background:#2a7fff}
+  .etapas li.feita{color:#9fe0b8;border-color:#1f5a3c}
+  .etapas li.feita span{background:#1f5a3c}
+
+  /* Espera */
+  .espera-dica{font-size:12px;color:var(--muted);margin-top:8px}
+
+  /* Resultado: chips, cartoes de calcario e acoes */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+  .chip{padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid transparent}
+  .chip.ruim{background:#3a1620;color:#ffc2c8;border-color:#5c2230}
+  .chip.atencao{background:#3a3214;color:#f6e3a1;border-color:#5a4c1c}
+  .chip.bom{background:#123626;color:#a8ecc1;border-color:#1f5a3c}
+  .painel[data-painel="rec"] h3 + ul{list-style:none;padding:0;display:grid;gap:10px}
+  .painel[data-painel="rec"] h3 + ul li{background:#0c1a33;border:1px solid #1f3152;border-radius:12px;padding:12px 14px;margin:0}
+  .painel[data-painel="rec"] h3 + ul li strong:nth-of-type(2){display:block;font-size:24px;color:#fff;margin:4px 0 2px}
+  .relatorio-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #24324a}
+  .relatorio-acoes button{background:#16223d;box-shadow:none;padding:10px 14px;font-size:14px}
+  .relatorio-acoes button.principal{background:var(--grad)}
+
+  @media print{
+    body{background:#fff;color:#000}
+    header,.etapas,.abas,.relatorio-acoes,.msg.me,#creditos-container,.site-footer{display:none !important}
+    .chat{background:none;padding:0}
+    .msg{box-shadow:none;border:0;background:none;max-width:100%}
+    .painel[hidden]{display:block !important}
+    .report,.report p,.report h2,.report h3,.report th,.report td{color:#000 !important;background:#fff !important}
+    .report th,.report td{border-color:#999 !important}
+    .chip{border:1px solid #999 !important;background:#fff !important;color:#000 !important}
+  }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:#e9efff;font-family:'Segoe UI',system-ui,Arial}
   .wrap{max-width:900px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
@@ -102,6 +154,21 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .cf-lido{font-size:12px;color:#9bb4d6;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cf-remover{background:none;box-shadow:none;border:1px solid #1a3055;border-radius:8px;padding:4px 0;color:#9bb4d6;font-size:18px;line-height:1}
   .cf-add{background:none;box-shadow:none;border:0;color:#bcdcff;text-decoration:underline;padding:10px 0}
+  .cf-grupo-tit,.cf-grupo summary{padding:8px 10px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#cfe0f7;background:#0a1428;border-top:1px solid #142440}
+  .cf-grupo summary{cursor:pointer}
+  .cf-row.editado{background:#2a2510}
+  .cf-row.editado .cf-num{border-color:#d9b44a}
+  .cf-row.suspeito{background:#351a22}
+  .cf-row.suspeito .cf-num{border-color:#ff8a8a}
+  .cf-legenda{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:12px;color:var(--muted);margin-top:6px}
+  .cf-legenda .leg{display:inline-block;width:12px;height:12px;border-radius:3px}
+  .cf-legenda .par{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .cf-resumo{margin:10px 0 4px;font-size:14px;font-weight:600}
+  .cf-resumo.ok{color:#9fe0b8}
+  .cf-resumo.falha{color:#ffb4b4}
+  .cf-todas summary{cursor:pointer;color:var(--muted);font-size:12px;padding:4px 0}
+  .cf-legenda .leg.editado{background:#2a2510;border:1px solid #d9b44a}
+  .cf-legenda .leg.suspeito{background:#351a22;border:1px solid #ff8a8a}
   .cf-contas{margin-top:8px;font-size:13px}
   .cf-contas ul{list-style:none;padding:0;margin:0 0 8px}
   .cf-contas li{padding:3px 0}
@@ -123,6 +190,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   @media(max-width:600px){
     .cf-cab{display:none}
     .cf-row{grid-template-columns:minmax(0,1fr) 32px;grid-template-areas:"campo rem" "valor valor" "lido lido"}
+    .cf-linha-topo{flex-direction:column;align-items:stretch;gap:4px}
+    .cf-linha-topo label{min-width:0}
+    .cf-linha-topo select{width:100%}
     .cf-row .cf-campo{grid-area:campo}.cf-row .cf-valor{grid-area:valor}.cf-row .cf-lido{grid-area:lido;white-space:normal}.cf-row .cf-remover{grid-area:rem}
   }
   button{background:var(--grad);border:0;color:#fff;padding:13px 18px;border-radius:14px;cursor:pointer;font-weight:600;box-shadow:0 0 15px #1b49ff40}
@@ -282,26 +352,32 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <a href="https://www.solomaisia.com.br/creditos" target="_top" rel="noopener" id="creditos" style="display:none">0</a>
     </div>
     
-    <img 
+    <img
   src="https://static.wixstatic.com/media/74cda6_7148ea07da184995b6c4fedbcf6f5790~mv2.png"
   alt="Solo+IA"
   id="logoImg"
-  style="cursor:pointer; width:min(360px,85vw); height:auto; display:block; margin:0 auto 8px auto;"
+  title="Nova análise"
 >
 
     <h1>Interpretação Inteligente do seu Solo</h1>
-    <p>
+    <p class="intro">
   Envie sua análise de solo (<a href="https://www.solomaisia.com.br/pdf-nativo" target="_top" rel="noopener" id="linkPdfNativo">PDF nativo</a>) e escolha a cultura.
   Atualmente disponível apenas para solos do Rio Grande do Sul (RS) e Santa Catarina (SC).
 </p>
 
   </header>
 
+  <!-- Etapas do fluxo: enviar -> conferir -> resultado -->
+  <ol class="etapas" id="etapas" aria-label="Etapas">
+    <li class="atual" data-etapa="1"><span>1</span> Enviar</li>
+    <li data-etapa="2"><span>2</span> Conferir</li>
+    <li data-etapa="3"><span>3</span> Resultado</li>
+  </ol>
+
   <section id="hero" class="hero">
     <div class="card">
       <div class="pad" id="confirmacao" hidden></div>
       <div class="pad" id="formulario">
-        <h2>Envie sua análise de solo</h2>
         <div class="row">
           <div class="field">
             <label>📎 PDF da análise de solo (somente PDF nativo)</label>
@@ -426,12 +502,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     };
   }
   const STAGES = [
-    'Reconhecendo a situação do solo…',
-    'Consultando fontes técnicas…',
-    'Redigindo interpretação personalizada…',
-    'Formatando recomendações…'
+    'Conferindo os valores…',
+    'Calculando calcário e adubação pelo manual…',
+    'Redigindo a recomendação…',
+    'Montando o relatório…'
   ];
-  const DURATIONS = [4000, 4000, 6000, 4000];
+  const DURATIONS = [8000, 15000, 30000, 20000];
 
   ready(async function(){
     const startBtn  = document.getElementById('startBtn');
@@ -652,6 +728,11 @@ startBtn.addEventListener('click', async () => {
   startBtn.textContent = '';
   startBtn.appendChild(loader.el);
   loader.start();
+  const dicaLer = document.createElement('div');
+  dicaLer.className = 'espera-dica';
+  dicaLer.style.textAlign = 'center';
+  dicaLer.textContent = 'A leitura leva cerca de 1 minuto. Nenhum crédito é usado nesta etapa.';
+  startBtn.closest('.actions').after(dicaLer);
   try {
     const auth = await askAuth(15000);
     const up = assinaturaUpload(auth);
@@ -677,9 +758,11 @@ startBtn.addEventListener('click', async () => {
     }
     trackEvent('laudo_lido', { cultura: culturaId, amostras: dados.amostras.length, laboratorio: dados.laboratorio || '' });
     formEl.hidden = true;
+    setEtapa(2);
+    document.body.classList.add('compacto');
     window.SoloiaConfirmacao.abrir(confEl, dados, {
       cultura: culturaId,
-      onVoltar: () => { confEl.hidden = true; formEl.hidden = false; },
+      onVoltar: () => { confEl.hidden = true; formEl.hidden = false; setEtapa(1); document.body.classList.remove('compacto'); },
       onConfirmar: (conf) => {
         trackEvent('valores_confirmados', { cultura: culturaId, editados: Object.values(conf.laudo.campos).filter(c => c.editado).length,
           contas: conf.validacao.status });
@@ -690,6 +773,7 @@ startBtn.addEventListener('click', async () => {
     avisarForm('Erro de conexão ao ler o laudo: ' + escapeHtml(String(err.message || err)));
   } finally {
     loader.stop();
+    dicaLer.remove();
     startBtn.disabled = false;
     startBtn.textContent = 'Ler laudo';
   }
@@ -700,12 +784,14 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
   let loader, typing;
   try{
     trackEvent('botao_enviar_clicado', { arquivo_nome: f.name, arquivo_tamanho: f.size, cultura: culture });
+    setEtapa(3);
+    document.body.classList.add('compacto');
     toChat();
     addMsg('me',`Enviei <span class='pill'>📄 ${escapeHtml(f.name)}</span>\nCultura: <b>${escapeHtml(culture)}</b>\nValores conferidos: amostra <b>${escapeHtml(conf.laudo.amostra || '')}</b>`);
 
     loader = createStagedLoader(STAGES, DURATIONS);
-    typing = addMsg('ai', '');
-    typing.appendChild(loader.el);
+    typing = addMsg('ai', '<div class="espera-dica">Leva cerca de 1 a 2 minutos. Não feche a página.</div>');
+    typing.prepend(loader.el);
     loader.start();
 
     console.log('[Solo+IA] 1️⃣ Pedindo auth ao Wix...');
@@ -862,9 +948,11 @@ async function gerarInterpretacao(f, culture, culturaId, conf){
           bubble.querySelectorAll('.painel').forEach(p => { p.hidden = p.dataset.painel !== b.dataset.aba; });
           trackEvent('aba_relatorio', { aba: b.dataset.aba });
         }));
+        bubble.querySelector('.type-target').innerHTML = renderMD(partes[0].replace('<!--DIAGNOSTICO-->', ''));
         colorirClasses(bubble);
-        await mdTypewriter(bubble.querySelector('.type-target'), partes[0].replace('<!--DIAGNOSTICO-->', ''), { charDelay: 4, renderEvery: 24 });
-        colorirClasses(bubble);
+        chipsDiagnostico(bubble);
+        acoesRelatorio(bubble, culture);
+        try { bubble.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
       } else {
         const bubble = addMsg('ai', `<div class="report"><div class="type-target"></div></div>`);
         await mdTypewriter(bubble.querySelector('.type-target'), texto, { charDelay: 6, renderEvery: 24 });
@@ -956,6 +1044,63 @@ window.addEventListener('message', (event) => {
 });
 
 // Classe de fertilidade colorida nas tabelas do relatorio (Muito baixo/Baixo, Medio, Alto/Muito alto)
+// Etapa atual do fluxo (1 enviar, 2 conferir, 3 resultado)
+function setEtapa(n) {
+  document.querySelectorAll('#etapas li').forEach(li => {
+    const e = Number(li.dataset.etapa);
+    li.classList.toggle('atual', e === n);
+    li.classList.toggle('feita', e < n);
+  });
+}
+
+// Destaques no topo do Diagnostico: o que esta baixo e se a calagem e indicada (tirado da propria tabela)
+function chipsDiagnostico(el) {
+  const painel = el.querySelector('[data-painel="diag"]');
+  if (!painel) return;
+  const chips = [];
+  painel.querySelectorAll('tr').forEach(tr => {
+    const tds = tr.querySelectorAll('td');
+    if (tds.length === 3 && tds[2].classList.contains('cls-baixo')) chips.push(['ruim', `${tds[0].textContent.trim()}: ${tds[2].textContent.trim()}`]);
+  });
+  const resumo = painel.textContent;
+  if (/Calagem: indicada/.test(resumo)) chips.push(['atencao', 'Calagem indicada']);
+  else if (/Calagem: não indicada/.test(resumo)) chips.push(['bom', 'Sem necessidade de calagem']);
+  if (!chips.some(c => c[0] === 'ruim')) chips.unshift(['bom', 'Nenhum nutriente em falta']);
+  const div = document.createElement('div');
+  div.className = 'chips';
+  div.innerHTML = chips.map(([tipo, txt]) => `<span class="chip ${tipo}">${escapeHtml(txt)}</span>`).join('');
+  const h2 = painel.querySelector('h2');
+  (h2 || painel.firstElementChild)?.after(div);
+}
+
+// Copiar, imprimir/salvar PDF e nova analise
+function acoesRelatorio(el, cultura) {
+  const div = document.createElement('div');
+  div.className = 'relatorio-acoes';
+  div.innerHTML = '<button type="button" data-acao="copiar">Copiar</button><button type="button" data-acao="imprimir">Imprimir / salvar PDF</button><button type="button" data-acao="nova" class="principal">Nova análise</button>';
+  el.querySelector('.report').appendChild(div);
+  div.addEventListener('click', async (ev) => {
+    const acao = ev.target?.dataset?.acao;
+    if (!acao) return;
+    // fora do IIFE: trackEvent nao existe aqui
+    try { window.parent.postMessage({ type: 'soloia:trackEvent', eventName: 'relatorio_' + acao, eventData: { cultura } }, '*'); } catch (_) {}
+    if (acao === 'nova') { location.reload(); return; }
+    if (acao === 'imprimir') { window.print(); return; }
+    const texto = [...el.querySelectorAll('.painel')].map(p => p.innerText.trim()).join('\n\n');
+    const botao = ev.target;
+    // dentro do iframe do Wix a API pode ficar pendente sem rejeitar: limite de tempo e cai no execCommand
+    try {
+      await Promise.race([navigator.clipboard.writeText(texto),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('tempo')), 1200))]);
+    } catch (_) {
+      const ta = document.createElement('textarea'); ta.value = texto; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (__) {} ta.remove();
+    }
+    botao.textContent = 'Copiado ✓';
+    setTimeout(() => { botao.textContent = 'Copiar'; }, 2000);
+  });
+}
+
 function colorirClasses(el) {
   const cor = { 'muito baixo': 'cls-baixo', 'baixo': 'cls-baixo', 'médio': 'cls-medio', 'alto': 'cls-alto', 'muito alto': 'cls-alto' };
   el.querySelectorAll('.report td').forEach(td => {

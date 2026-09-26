@@ -32,6 +32,24 @@ const CAMPOS = [
   ['ferroMgDm3', 'Ferro (Fe)', 'mg/dm³'],
   ['sodioMgDm3', 'Sódio (Na)', 'mg/dm³'],
 ];
+// Grupos da tela (micronutrientes recolhidos por padrao)
+const GRUPOS = [
+  ['acidez', 'Acidez', ['phAgua', 'indiceSmp', 'alTrocavelCmolcDm3', 'hAlCmolcDm3', 'saturacaoAlPercentual', 'saturacaoBasesPercentual']],
+  ['fertilidade', 'Fertilidade', ['argilaPercentual', 'materiaOrganicaPercentual', 'carbonoOrganicoPercentual', 'fosforoMgDm3', 'potassioMgDm3',
+    'potassioCmolcDm3', 'calcioCmolcDm3', 'magnesioCmolcDm3', 'somaBasesCmolcDm3', 'ctcEfetivaCmolcDm3', 'ctcPh7CmolcDm3']],
+  ['micros', 'Micronutrientes e enxofre', ['enxofreMgDm3', 'zincoMgDm3', 'cobreMgDm3', 'boroMgDm3', 'manganesMgDm3', 'ferroMgDm3', 'sodioMgDm3', 'feOxalatoGDm3']],
+];
+const grupoDe = campo => (GRUPOS.find(([, , cs]) => cs.includes(campo)) || ['outros'])[0];
+
+// Valor diferente do lido no laudo (ou linha adicionada) = editado pelo agronomo
+function editado(l) {
+  if (!l.original) return Boolean(l.campo || l.texto);
+  const n = lerNumero(l.texto);
+  if (!n) return true;
+  if (n.limite) return !(l.original.limite === n.limite && l.original.limiteValor === n.valor);
+  return l.original.valor !== n.valor;
+}
+
 const INFO = Object.fromEntries(CAMPOS.map(([k, nome, un]) => [k, { nome, un }]));
 const UNIDADE_CONTRATO = { '%': '%', '': 'indice', 'mg/dm³': 'mg/dm3', 'cmolc/dm³': 'cmolc/dm3', 'g/dm³': 'g/dm3' };
 const NOMES_CONTA = Object.fromEntries(CAMPOS.map(([k, nome]) => [k, nome]));
@@ -89,6 +107,7 @@ function opcoesCampo(atual) {
  */
 export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = '' }) {
   let indice = 0;
+  let microsAberto = false;
   let linhas = [];
   let camada = null;
 
@@ -124,14 +143,28 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
   function renderContas() {
     const { laudo, erros } = atual();
     const v = validarLaudo(laudo);
-    const itens = v.contas.map(c => `<li class="conta ${c.ok ? 'ok' : 'falha'}">${c.ok ? '✓' : '✗'} ${esc(c.nome)}: calculado ${br(c.calculado)} · laudo ${br(c.impresso)}</li>`).join('');
+    const item = c => `<li class="conta ${c.ok ? 'ok' : 'falha'}">${c.ok ? '✓' : '✗'} ${esc(c.nome)}: calculado ${br(c.calculado)} · laudo ${br(c.impresso)}</li>`;
+    const falhas = v.contas.filter(c => !c.ok);
+    // resumo curto; lista completa recolhida
+    const itens = !v.contas.length ? '' : (falhas.length
+      ? `<p class="cf-resumo falha">✗ ${falhas.length} de ${v.contas.length} contas do laboratório não fecham:</p><ul>${falhas.map(item).join('')}</ul>`
+      : `<p class="cf-resumo ok">✓ As ${v.contas.length} contas do laboratório fecham.</p>`)
+      + `<details class="cf-todas"><summary>ver todas as contas</summary><ul>${v.contas.map(item).join('')}</ul></details>`;
     const problemas = [
       ...erros.map(e => ({ nivel: 'bloqueio', texto: e })),
       ...v.problemas.filter(p => p.conta).map(p => ({ nivel: p.nivel, texto: `${p.conta} não fecha${p.suspeitos?.length ? ' — confira: ' + p.suspeitos.map(s => NOMES_CONTA[s] || s).join(', ') : ''}.` })),
       ...v.problemas.filter(p => !p.conta && p.nivel === 'aviso').map(p => ({ nivel: 'aviso', texto: `${NOMES_CONTA[p.campo] || p.campo}: ausente no laudo; parte do relatório fica pendente.` })),
     ];
-    el.querySelector('.cf-contas').innerHTML = (itens ? `<ul>${itens}</ul>` : '<p class="muted">O laudo não traz dados suficientes para refazer as contas; confira os valores com atenção.</p>')
+    const todasAbertas = el.querySelector('.cf-todas')?.open;
+    el.querySelector('.cf-contas').innerHTML = (itens ? itens : '<p class="muted">O laudo não traz dados suficientes para refazer as contas; confira os valores com atenção.</p>')
       + problemas.map(p => `<div class="cf-prob ${p.nivel}">${p.nivel === 'bloqueio' ? '⚠️' : 'ℹ️'} ${esc(p.texto)}</div>`).join('');
+    if (todasAbertas) el.querySelector('.cf-todas').open = true;
+    const suspeitos = new Set(v.problemas.filter(p => p.conta).flatMap(p => p.suspeitos || []));
+    el.querySelectorAll('.cf-row').forEach((row) => {
+      const l = linhas[Number(row.dataset.i)];
+      row.classList.toggle('suspeito', Boolean(l && suspeitos.has(l.campo)));
+      row.classList.toggle('editado', Boolean(l && editado(l)));
+    });
     const invalido = erros.length > 0;
     const conferiu = el.querySelector('#cfConferi').checked;
     const btn = el.querySelector('#cfConfirmar');
@@ -158,14 +191,21 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
         </select></div>
       <div class="cf-tabela" role="table">
         <div class="cf-cab" role="row"><span>Campo</span><span>Valor</span><span>Lido no laudo</span><span></span></div>
-        ${linhas.map((l, i) => `
-          <div class="cf-row" role="row" data-i="${i}">
+        ${[...GRUPOS, ['outros', 'Adicionados', []]].map(([g, titulo]) => {
+          const doGrupo = linhas.map((l, i) => [l, i]).filter(([l]) => grupoDe(l.campo) === g);
+          if (!doGrupo.length) return '';
+          const html = doGrupo.map(([l, i]) => `
+          <div class="cf-row${editado(l) ? ' editado' : ''}" role="row" data-i="${i}">
             <select class="cf-campo" aria-label="Campo">${opcoesCampo(l.campo)}</select>
             <div class="cf-valor"><input class="cf-num" inputmode="decimal" value="${esc(l.texto)}" aria-label="Valor"><span class="cf-un">${esc(INFO[l.campo]?.un ?? '')}</span></div>
             <span class="cf-lido" title="${esc(l.lido)}">${esc(l.lido || '—')}</span>
             <button type="button" class="cf-remover" aria-label="Remover linha">×</button>
-          </div>`).join('')}
+          </div>`).join('');
+          if (g === 'micros') return `<details class="cf-grupo"${microsAberto ? ' open' : ''}><summary>${titulo} (${doGrupo.length})</summary>${html}</details>`;
+          return `<div class="cf-grupo-tit">${titulo}</div>${html}`;
+        }).join('')}
       </div>
+      <div class="cf-legenda"><span class="par"><span class="leg editado"></span> valor editado por você</span><span class="par"><span class="leg suspeito"></span> entra numa conta que não fechou</span></div>
       <button type="button" class="cf-add">+ adicionar valor</button>
       <div class="cf-contas" aria-live="polite"></div>
       <details class="cf-lavoura">
@@ -189,6 +229,7 @@ export function abrir(el, dados, { onConfirmar, onVoltar, custo = 16, cultura = 
         <button type="button" id="cfConfirmar">Confirmar e gerar interpretação (${custo} créditos)</button>
       </div>`;
     el.querySelector('#cfAmostra')?.addEventListener('change', e => carregarAmostra(Number(e.target.value)));
+    el.querySelector('.cf-grupo')?.addEventListener('toggle', e => { microsAberto = e.target.open; });
     el.querySelector('#cfCamada').addEventListener('change', e => { camada = e.target.value; renderContas(); });
     el.querySelectorAll('.cf-row').forEach((row) => {
       const i = Number(row.dataset.i);
