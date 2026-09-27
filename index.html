@@ -1982,6 +1982,11 @@ async function iniciarConta() {
       : ordemHist === 'itens' ? (a, b) => ((b.total_amostras || 1) - (a.total_amostras || 1)) || porData(a, b)
       : porData);
     const dataCurta = iso => { try { return new Date(iso).toLocaleDateString('pt-BR'); } catch (_) { return ''; } };
+    // so um nivel de subpasta: na raiz cria pasta, dentro de pasta cria subpasta, dentro de subpasta nao cria
+    const atual = dadosHist.pastas.find(p => p.id === pastaAtual);
+    const podeCriar = !atual || !atual.pai_id;
+    const rotuloCriar = atual ? '+ Nova subpasta' : '+ Nova pasta';
+    const dicaCriar = atual ? 'Nome da subpasta (ex.: 2025, 2026, Talhão 3)' : 'Nome da pasta (ex.: Cliente João, Fazenda Santa Rita)';
     const vazio = !subs.length && !laudos.length;
     lista.innerHTML = `
       <div class="pastas-cab">
@@ -1999,12 +2004,12 @@ async function iniciarConta() {
             <button type="button" data-modo="grade" class="${modoHist === 'grade' ? 'ativo' : ''}" title="Grade" aria-label="Exibir em grade">▦</button>
             <button type="button" data-modo="lista" class="${modoHist === 'lista' ? 'ativo' : ''}" title="Lista" aria-label="Exibir em lista">☰</button>
           </div>
-          <button type="button" class="botao-sec" id="btnNovaPasta">+ Nova pasta</button>
+          ${podeCriar ? `<button type="button" class="botao-sec" id="btnNovaPasta">${rotuloCriar}</button>` : ''}
         </div>
       </div>
       <form id="formNovaPasta" class="pasta-nova" hidden>
-        <input id="nomeNovaPasta" maxlength="80" placeholder="Nome da pasta (ex.: Cliente João, Fazenda Santa Rita, Safra 2026)" autocomplete="off">
-        <button type="submit">Criar pasta</button>
+        <input id="nomeNovaPasta" maxlength="80" placeholder="${dicaCriar}" autocomplete="off">
+        <button type="submit">${atual ? 'Criar subpasta' : 'Criar pasta'}</button>
         <button type="button" class="botao-link" id="cancelarPasta">Cancelar</button>
       </form>
       ${subs.length ? `<div class="${modoHist === 'lista' ? 'pastas-lista' : 'pastas-grade'}">${subs.map(p => {
@@ -2021,7 +2026,7 @@ async function iniciarConta() {
       }).join('')}</div>` : ''}
       <div class="laudos-${modoHist}">${laudos.map(cartaoLaudo).join('')}</div>
       ${vazio ? (pastaAtual
-        ? '<div class="historico-vazio"><p>Pasta vazia.</p><p class="muted">Mova laudos para cá pelo “Mover para” de cada laudo, ou escolha esta pasta ao enviar um laudo novo.</p></div>'
+        ? `<div class="historico-vazio"><p>${atual && !atual.pai_id ? 'Pasta vazia.' : 'Subpasta vazia.'}</p><p class="muted">Arraste laudos para cá (ou use o “Mover para” de cada laudo)${atual && !atual.pai_id ? ', ou crie subpastas para separar por ano ou talhão' : ''}.</p></div>`
         : '<div class="historico-vazio"><p>Nenhum laudo ainda.</p><p class="muted">Os laudos que você enviar aparecem aqui, com o PDF e as interpretações de cada amostra. Crie pastas para organizar por cliente, fazenda ou safra.</p></div>') : ''}`;
     desenharMiniaturas();
   }
@@ -2052,7 +2057,7 @@ async function iniciarConta() {
     const nome = lista.querySelector('#nomeNovaPasta').value.trim();
     if (!nome) return;
     try { await window.SoloiaConta.criarPasta(nome, pastaAtual); await recarregarPastas(); }
-    catch (e) { alert('Não foi possível criar a pasta.'); }
+    catch (e) { alert(pastaAtual ? 'Não foi possível criar a subpasta.' : 'Não foi possível criar a pasta.'); }
   });
   lista.addEventListener('keydown', ev => {
     const t = ev.target.closest('[data-abrir-pasta]');
