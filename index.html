@@ -334,6 +334,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .pastas-lista .pasta-txt{flex-direction:column;gap:0}
     .pastas-opcoes{width:100%}
   }
+  /* Interpretacao aberta dentro do cartao */
+  .laudo-relatorio{margin-top:14px;padding-top:12px;border-top:1px solid #1f3152}
+  .laudo-relatorio[hidden],.historico-lista[hidden]{display:none}
+  .lr-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+  .lr-tit{font-weight:600;color:#dfeaff;font-size:14.5px}
+  .lr-fechar{flex:none;width:36px;height:36px;padding:0;border-radius:50%;background:#16223d;box-shadow:none;border:1px solid #24406e;color:#dfeaff;font-size:22px;line-height:1;cursor:pointer}
+  .lr-fechar:hover{background:#2a1212;border-color:#6b2a2a;color:#fff}
+  .la-abrir.ativo{background:#1d3a6b;border-color:#2a7fff;color:#fff}
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
     .cf-acoes-multi button{width:100%}
@@ -1892,6 +1900,7 @@ async function iniciarConta() {
           <label class="la-mover">📁 <select data-mover="${escapeHtml(l.id)}" aria-label="Mover para a pasta">${opcoesPastas(l.pasta_id || null)}</select></label>
           <button type="button" class="botao-link la-apagar" data-apagar="${escapeHtml(l.id)}" data-path="${escapeHtml(l.pdf_path || '')}">Apagar laudo</button>
         </div>
+        <div class="laudo-relatorio" hidden></div>
       </div>
     </details>`;
   }
@@ -2064,19 +2073,24 @@ async function iniciarConta() {
     if (t && (ev.key === 'Enter' || ev.key === ' ') && ev.target === t) { ev.preventDefault(); t.click(); }
   });
 
-  async function abrirInterpretacao(id) {
-    lista.hidden = true;
-    ver.hidden = false;
-    ver.innerHTML = '<p class="muted">Carregando…</p>';
-    try { window.scrollTo({ top: 0 }); } catch (_) {}
+  // Interpretacao abre dentro do cartao do laudo, logo abaixo da tabela; o X fecha
+  async function abrirInterpretacao(id, botao) {
+    const card = botao?.closest('.laudo-card');
+    const box = card?.querySelector('.laudo-relatorio');
+    if (!box) return;
+    card.querySelectorAll('.la-abrir.ativo').forEach(b => b.classList.remove('ativo'));
+    botao.classList.add('ativo');
+    box.hidden = false;
+    box.innerHTML = '<p class="muted">Carregando…</p>';
     try {
       const a = await window.SoloiaConta.abrir(id);
-      ver.innerHTML = `<div class="historico-cab"><button type="button" class="botao-link" id="histLista">← Todas as análises</button>
-        <span class="muted">${escapeHtml(a.cultura || '')} · ${fmt(a.criado_em)}</span></div><div class="msg ai historico-rel"></div>`;
-      montarRelatorio(ver.querySelector('.historico-rel'), a.texto, a.cultura, a.amostra ? 'Amostra ' + a.amostra : '');
-      ver.querySelector('#histLista').addEventListener('click', abrirLista);
+      box.innerHTML = `<div class="lr-cab"><span class="lr-tit">${escapeHtml(a.amostra ? 'Amostra ' + a.amostra : 'Interpretação')} · ${escapeHtml(a.cultura || '')} · ${fmt(a.criado_em)}</span>
+        <button type="button" class="lr-fechar" data-fechar-rel aria-label="Fechar interpretação" title="Fechar">×</button></div>
+        <div class="msg ai historico-rel"></div>`;
+      montarRelatorio(box.querySelector('.historico-rel'), a.texto, a.cultura, '');
+      try { box.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (_) {}
     } catch (e) {
-      ver.innerHTML = '<p class="muted">Não foi possível abrir esta análise.</p>';
+      box.innerHTML = '<div class="lr-cab"><span class="muted">Não foi possível abrir esta análise.</span><button type="button" class="lr-fechar" data-fechar-rel aria-label="Fechar">×</button></div>';
     }
   }
 
@@ -2201,9 +2215,17 @@ async function iniciarConta() {
   });
 
   lista.addEventListener('click', async ev => {
+    const fechar = ev.target.closest('[data-fechar-rel]');
+    if (fechar) {
+      const box = fechar.closest('.laudo-relatorio');
+      box.hidden = true;
+      box.innerHTML = '';
+      box.closest('.laudo-card')?.querySelectorAll('.la-abrir.ativo').forEach(b => b.classList.remove('ativo'));
+      return;
+    }
     const alvo = ev.target.closest('[data-interp],[data-pdf],[data-gerar],[data-apagar]');
     if (!alvo) return;
-    if (alvo.dataset.interp) { abrirInterpretacao(alvo.dataset.interp); return; }
+    if (alvo.dataset.interp) { abrirInterpretacao(alvo.dataset.interp, alvo); return; }
     if (alvo.dataset.pdf) {
       ev.preventDefault();
       // abre a aba ja no clique (senao o navegador bloqueia) e depois coloca o PDF (endereco local, sem link do Supabase)
