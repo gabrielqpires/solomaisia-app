@@ -303,11 +303,37 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .la-mover select{background:#0b1730;border:1px solid #24406e;color:#dfeaff;border-radius:10px;padding:8px 10px;font:inherit;font-size:13.5px;max-width:220px}
   /* Arrastar laudos para as pastas */
   details.laudo-card[draggable="true"]{cursor:grab}
-  details.laudo-card.arrastando{opacity:.45}
   .arrastando-laudo .pasta-tile,.arrastando-laudo .pastas-trilha button{outline:2px dashed #2a7fff;outline-offset:2px}
   .pasta-tile.solta-aqui,.pastas-trilha button.solta-aqui{background:#16305f;border-color:#7fb0ff;transform:scale(1.03)}
   .aviso-rapido{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;z-index:120;background:#0f2a1d;border:1px solid #1f5a3c;color:#dff5e8;padding:10px 16px;border-radius:999px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:opacity .2s,transform .2s;pointer-events:none}
   .aviso-rapido.visivel{opacity:1;transform:translate(-50%,0)}
+  /* Opcoes de exibicao das pastas */
+  .pastas-opcoes{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .pastas-ordem{display:flex;align-items:center;gap:8px;font-size:13.5px;color:#a9b8d6}
+  .pastas-ordem select{background:#0b1730;border:1px solid #24406e;color:#dfeaff;border-radius:10px;padding:7px 10px;font:inherit;font-size:13.5px}
+  .pastas-modo{display:flex;border:1px solid #24406e;border-radius:10px;overflow:hidden}
+  .pastas-modo button{background:#0b1730;box-shadow:none;border:0;border-radius:0;color:#a9b8d6;padding:7px 11px;font-size:15px;line-height:1}
+  .pastas-modo button.ativo{background:#1d3a6b;color:#fff}
+  .pastas-lista{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+  .pastas-lista .pasta-tile{padding:9px 12px;border-radius:10px}
+  .pastas-lista .pasta-ico{font-size:20px}
+  .pastas-lista .pasta-txt{flex-direction:row;align-items:baseline;gap:12px}
+  .pastas-lista .pasta-acoes{opacity:1}
+  .laudos-lista .laudo-topo{padding:8px 14px;gap:12px}
+  .laudos-lista .laudo-mini{width:44px;height:58px;border-radius:6px}
+  .laudos-lista .laudo-tit .laudo-status{margin-top:4px}
+  .laudos-lista .laudo-nome{font-size:15px}
+  .laudos-lista .laudo-card{margin-bottom:8px}
+  /* Arrastar: so a miniatura segue o mouse */
+  details.laudo-card.arrastando{opacity:.6}
+  .arraste-fantasma{position:fixed;top:-1000px;left:-1000px;display:flex;align-items:center;gap:10px;padding:8px 12px 8px 8px;background:#0f1a31;border:1px solid #2a7fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:280px;pointer-events:none}
+  .arraste-fantasma img{width:40px;height:54px;object-fit:cover;object-position:top;border-radius:5px;background:#fff}
+  .arraste-fantasma .af-pdf{display:grid;place-items:center;width:40px;height:54px;border-radius:5px;background:#fff;color:#64748b;font-weight:700;font-size:12px}
+  .arraste-fantasma .af-nome{color:#fff;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  @media (max-width:600px){
+    .pastas-lista .pasta-txt{flex-direction:column;gap:0}
+    .pastas-opcoes{width:100%}
+  }
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
     .cf-acoes-multi button{width:100%}
@@ -1900,6 +1926,10 @@ async function iniciarConta() {
   // Pastas: navegacao (trilha), subpastas e laudos da pasta atual. Tudo carregado de uma vez e filtrado aqui.
   let pastaAtual = null;
   let dadosHist = { pastas: [], laudos: [] };
+  const pref = (k, padrao) => { try { return localStorage.getItem('soloia:' + k) || padrao; } catch (_) { return padrao; } };
+  const guardarPref = (k, v) => { try { localStorage.setItem('soloia:' + k, v); } catch (_) {} };
+  let ordemHist = pref('ordem', 'recentes');   // recentes | nome | itens
+  let modoHist = pref('modo', 'grade');        // grade | lista
   function filhosDe() {
     const m = new Map();
     for (const p of dadosHist.pastas) { const k = p.pai_id || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(p); }
@@ -1941,34 +1971,55 @@ async function iniciarConta() {
     const filhos = filhosDe();
     if (pastaAtual && !dadosHist.pastas.some(p => p.id === pastaAtual)) pastaAtual = null;
     const trilha = [{ id: '', nome: 'Minhas análises' }, ...caminhoDe(pastaAtual)];
-    const subs = filhos.get(pastaAtual || '') || [];
-    const laudos = dadosHist.laudos.filter(l => (l.pasta_id || null) === pastaAtual);
+    const contagens = new Map((filhos.get(pastaAtual || '') || []).map(p => [p.id, contarPasta(p.id, filhos)]));
+    const porData = (a, b) => String(b.criado_em || '').localeCompare(String(a.criado_em || ''));
+    const subs = [...(filhos.get(pastaAtual || '') || [])].sort(
+      ordemHist === 'nome' ? (a, b) => a.nome.localeCompare(b.nome, 'pt-BR')
+      : ordemHist === 'itens' ? (a, b) => (contagens.get(b.id).laudos - contagens.get(a.id).laudos) || a.nome.localeCompare(b.nome, 'pt-BR')
+      : porData);
+    const laudos = dadosHist.laudos.filter(l => (l.pasta_id || null) === pastaAtual).sort(
+      ordemHist === 'nome' ? (a, b) => String(a.arquivo || '').localeCompare(String(b.arquivo || ''), 'pt-BR')
+      : ordemHist === 'itens' ? (a, b) => ((b.total_amostras || 1) - (a.total_amostras || 1)) || porData(a, b)
+      : porData);
+    const dataCurta = iso => { try { return new Date(iso).toLocaleDateString('pt-BR'); } catch (_) { return ''; } };
     const vazio = !subs.length && !laudos.length;
     lista.innerHTML = `
       <div class="pastas-cab">
         <nav class="pastas-trilha" aria-label="Pastas">${!pastaAtual ? `<span class="muted">${subs.length ? 'Arraste um laudo para uma pasta para organizar' : 'Crie pastas para organizar por cliente, fazenda ou safra'}</span>` : trilha.map((p, i) => i < trilha.length - 1
           ? `<button type="button" data-ir-pasta="${escapeHtml(p.id)}">${escapeHtml(p.nome)}</button><span class="pastas-sep">›</span>`
           : `<strong>${escapeHtml(p.nome)}</strong>`).join('')}</nav>
-        <button type="button" class="botao-sec" id="btnNovaPasta">+ Nova pasta</button>
+        <div class="pastas-opcoes">
+          <label class="pastas-ordem">Ordenar
+            <select id="ordemHist">
+              <option value="recentes"${ordemHist === 'recentes' ? ' selected' : ''}>Mais recentes</option>
+              <option value="nome"${ordemHist === 'nome' ? ' selected' : ''}>Nome (A–Z)</option>
+              <option value="itens"${ordemHist === 'itens' ? ' selected' : ''}>Mais itens</option>
+            </select></label>
+          <div class="pastas-modo" role="group" aria-label="Exibição">
+            <button type="button" data-modo="grade" class="${modoHist === 'grade' ? 'ativo' : ''}" title="Grade" aria-label="Exibir em grade">▦</button>
+            <button type="button" data-modo="lista" class="${modoHist === 'lista' ? 'ativo' : ''}" title="Lista" aria-label="Exibir em lista">☰</button>
+          </div>
+          <button type="button" class="botao-sec" id="btnNovaPasta">+ Nova pasta</button>
+        </div>
       </div>
       <form id="formNovaPasta" class="pasta-nova" hidden>
         <input id="nomeNovaPasta" maxlength="80" placeholder="Nome da pasta (ex.: Cliente João, Fazenda Santa Rita, Safra 2026)" autocomplete="off">
         <button type="submit">Criar pasta</button>
         <button type="button" class="botao-link" id="cancelarPasta">Cancelar</button>
       </form>
-      ${subs.length ? `<div class="pastas-grade">${subs.map(p => {
-        const c = contarPasta(p.id, filhos);
+      ${subs.length ? `<div class="${modoHist === 'lista' ? 'pastas-lista' : 'pastas-grade'}">${subs.map(p => {
+        const c = contagens.get(p.id);
         return `<div class="pasta-tile" role="button" tabindex="0" data-abrir-pasta="${escapeHtml(p.id)}">
           <span class="pasta-ico" aria-hidden="true">📁</span>
           <span class="pasta-txt"><span class="pasta-nome" title="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</span>
-            <span class="pasta-info">${c.laudos} ${c.laudos === 1 ? 'laudo' : 'laudos'}${c.subpastas ? ` · ${c.subpastas} ${c.subpastas === 1 ? 'subpasta' : 'subpastas'}` : ''}</span></span>
+            <span class="pasta-info">${c.laudos} ${c.laudos === 1 ? 'laudo' : 'laudos'}${c.subpastas ? ` · ${c.subpastas} ${c.subpastas === 1 ? 'subpasta' : 'subpastas'}` : ''}${modoHist === 'lista' && p.criado_em ? ` · criada em ${dataCurta(p.criado_em)}` : ''}</span></span>
           <span class="pasta-acoes">
             <button type="button" data-renomear="${escapeHtml(p.id)}" title="Renomear" aria-label="Renomear pasta">✎</button>
             <button type="button" data-apagar-pasta="${escapeHtml(p.id)}" title="Apagar" aria-label="Apagar pasta">🗑</button>
           </span>
         </div>`;
       }).join('')}</div>` : ''}
-      ${laudos.map(cartaoLaudo).join('')}
+      <div class="laudos-${modoHist}">${laudos.map(cartaoLaudo).join('')}</div>
       ${vazio ? (pastaAtual
         ? '<div class="historico-vazio"><p>Pasta vazia.</p><p class="muted">Mova laudos para cá pelo “Mover para” de cada laudo, ou escolha esta pasta ao enviar um laudo novo.</p></div>'
         : '<div class="historico-vazio"><p>Nenhum laudo ainda.</p><p class="muted">Os laudos que você enviar aparecem aqui, com o PDF e as interpretações de cada amostra. Crie pastas para organizar por cliente, fazenda ou safra.</p></div>') : ''}`;
@@ -2026,8 +2077,9 @@ async function iniciarConta() {
 
 
   lista.addEventListener('click', async ev => {
-    const b = ev.target.closest('[data-ir-pasta],[data-abrir-pasta],#btnNovaPasta,#cancelarPasta,[data-renomear],[data-apagar-pasta]');
+    const b = ev.target.closest('[data-ir-pasta],[data-abrir-pasta],#btnNovaPasta,#cancelarPasta,[data-renomear],[data-apagar-pasta],[data-modo]');
     if (!b) return;
+    if (b.dataset.modo) { modoHist = b.dataset.modo; guardarPref('modo', modoHist); renderHistorico(); return; }
     if (b.dataset.renomear) {
       const p = dadosHist.pastas.find(x => x.id === b.dataset.renomear);
       const nome = prompt('Novo nome da pasta:', p?.nome || '');
@@ -2052,6 +2104,12 @@ async function iniciarConta() {
     if (b.dataset.abrirPasta) { pastaAtual = b.dataset.abrirPasta; renderHistorico(); try { window.scrollTo({ top: 0 }); } catch (_) {} return; }
     if (b.id === 'btnNovaPasta') { const f = lista.querySelector('#formNovaPasta'); f.hidden = false; f.querySelector('input').focus(); return; }
     if (b.id === 'cancelarPasta') { lista.querySelector('#formNovaPasta').hidden = true; }
+  });
+  lista.addEventListener('change', ev => {
+    if (ev.target.id !== 'ordemHist') return;
+    ordemHist = ev.target.value;
+    guardarPref('ordem', ordemHist);
+    renderHistorico();
   });
   lista.addEventListener('change', async ev => {
     const s = ev.target.closest('[data-mover]');
@@ -2082,6 +2140,13 @@ async function iniciarConta() {
     if (!card) return;
     ev.dataTransfer.setData(TIPO_LAUDO, card.dataset.laudo);
     ev.dataTransfer.effectAllowed = 'move';
+    const fantasma = document.createElement('div');
+    fantasma.className = 'arraste-fantasma';
+    const mini = miniaturas.get(card.querySelector('[data-mini]')?.dataset.mini);
+    fantasma.innerHTML = `${mini ? `<img src="${mini}" alt="">` : '<span class="af-pdf">PDF</span>'}<span class="af-nome">${escapeHtml(card.querySelector('.laudo-nome')?.textContent || 'Laudo')}</span>`;
+    document.body.appendChild(fantasma);
+    try { ev.dataTransfer.setDragImage(fantasma, 24, 24); } catch (_) {}
+    setTimeout(() => fantasma.remove(), 0);
     card.classList.add('arrastando');
     lista.classList.add('arrastando-laudo');
   });
