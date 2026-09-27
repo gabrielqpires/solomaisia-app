@@ -112,8 +112,9 @@ const rotuloAmostra = l => `${l.amostra || 'Amostra'}${l.identificacao ? ' — '
  */
 export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () => null, custo = 16, cultura = '', marcadas: marcadasIniciais, feitas = [] }) {
   const total = dados.amostras.length;
-  const marcadas = new Set(marcadasIniciais && marcadasIniciais.length ? marcadasIniciais : [0]);
   const jaFeitas = new Set(feitas);
+  const livres = [...Array(total).keys()].filter(i => !jaFeitas.has(i));
+  const marcadas = new Set((marcadasIniciais && marcadasIniciais.length ? marcadasIniciais : [livres[0] ?? 0]).filter(i => !jaFeitas.has(i)));
   let indice = 0;
   let microsAberto = false;
   let linhas = [];
@@ -188,7 +189,7 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
     b.textContent = n ? `Gerar ${n === total && n > 1 ? 'todas as ' + n + ' amostras' : n + (n === 1 ? ' amostra' : ' amostras')} (${n * custo} créditos)` : 'Marque ao menos uma amostra';
     b.disabled = !n || !el.querySelector('#cfConferi')?.checked;
     const todas = el.querySelector('#cfMarcarTodas');
-    if (todas) todas.textContent = n < total ? 'marcar todas' : 'desmarcar todas';
+    if (todas) todas.textContent = n < livres.length ? 'marcar todas' : 'desmarcar todas';
   }
 
   function renderContas() {
@@ -289,7 +290,7 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
           <button type="button" class="cf-link" id="cfMarcarTodas">marcar todas</button></div>
         <div class="cf-gerar-lista">${dados.amostras.map((x, i) => `
           <label class="cf-gerar-item${marcadas.has(i) ? ' marcada' : ''}">
-            <input type="checkbox" data-marcar="${i}"${marcadas.has(i) ? ' checked' : ''}>
+            <input type="checkbox" data-marcar="${i}"${marcadas.has(i) ? ' checked' : ''}${jaFeitas.has(i) ? ' disabled' : ''}>
             <span class="cf-gerar-n">${i + 1}</span><span class="cf-gerar-txt">${esc(rotuloAmostra(x.laudo))}</span>
             ${jaFeitas.has(i) ? '<span class="cf-feita">já gerada</span>' : ''}
           </label>`).join('')}
@@ -334,8 +335,8 @@ export function abrir(el, dados, { onConfirmar, onVoltar, onComprar, saldo = () 
       atualizarGerar();
     }));
     el.querySelector('#cfMarcarTodas')?.addEventListener('click', () => {
-      const todas = marcadas.size < total;
-      el.querySelectorAll('[data-marcar]').forEach(cb => {
+      const todas = marcadas.size < livres.length;
+      el.querySelectorAll('[data-marcar]:not(:disabled)').forEach(cb => {
         cb.checked = todas;
         cb.closest('.cf-gerar-item').classList.toggle('marcada', todas);
         if (todas) marcadas.add(Number(cb.dataset.marcar)); else marcadas.delete(Number(cb.dataset.marcar));

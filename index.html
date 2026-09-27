@@ -219,38 +219,63 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .la-acao{width:100%;justify-content:flex-start;padding-left:32px}
     .la-apagar{margin-left:0}
   }
-  /* Cartao do laudo: miniatura + tabela das amostras */
-  .laudo-topo{display:flex;gap:14px;align-items:flex-start}
-  .laudo-mini{flex:none;width:96px;height:128px;padding:0;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #24406e;box-shadow:0 6px 18px rgba(0,0,0,.35);position:relative;cursor:pointer}
+  /* Cartao do laudo (abre/fecha): miniatura, titulo e tabela das amostras */
+  .historico{max-width:1120px}
+  body.vista-larga .wrap{max-width:1160px}
+  details.laudo-card{padding:0;overflow:hidden}
+  .laudo-topo{display:flex;gap:16px;align-items:center;padding:14px 16px;cursor:pointer;list-style:none}
+  .laudo-topo::-webkit-details-marker{display:none}
+  .laudo-topo:hover{background:#0f1830}
+  .laudo-tit{flex:1;min-width:0}
+  .laudo-nome{font-size:16.5px}
+  .laudo-abrir{flex:none;display:flex;align-items:center;gap:6px;color:#8fc1ff;font-size:14px;font-weight:600;padding:8px 12px;border:1px solid #24406e;border-radius:999px}
+  .laudo-seta{transition:transform .2s}
+  details[open] .laudo-seta{transform:rotate(180deg)}
+  .la-aberto{display:none}
+  details[open] .la-aberto{display:inline}
+  details[open] .la-fechado{display:none}
+  .laudo-corpo{padding:0 16px 16px;border-top:1px solid #1f3152}
+  .laudo-mini{flex:none;width:96px;height:128px;padding:0;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #24406e;box-shadow:0 6px 18px rgba(0,0,0,.35);position:relative;cursor:zoom-in}
   .laudo-mini canvas{width:100%;height:100%;object-fit:cover;object-position:top;display:block;opacity:0;transition:opacity .2s}
   .laudo-mini.pronta canvas{opacity:1}
   .laudo-mini-txt{position:absolute;inset:0;display:grid;place-items:center;color:#94a3b8;font-weight:700;font-size:15px}
   .laudo-mini.pronta .laudo-mini-txt{display:none}
-  .laudo-mini:hover{border-color:#2a7fff}
+  .laudo-mini:hover{border-color:#2a7fff;transform:scale(1.03)}
   .laudo-tit .laudo-status{display:inline-block;margin-top:8px}
-  .laudo-tabela-wrap{margin:14px 0 12px;overflow-x:auto;border:1px solid #1f3152;border-radius:12px}
-  .laudo-tabela{width:100%;border-collapse:collapse;font-size:13.5px;white-space:nowrap}
-  .laudo-tabela th{background:#0f1a31;color:#a9b8d6;font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid #1f3152}
+  .laudo-tabela{width:100%;border-collapse:collapse;font-size:13.5px;margin:14px 0 12px}
+  .laudo-tabela th{color:#a9b8d6;font-weight:600;text-align:left;padding:8px 6px;border-bottom:1px solid #1f3152;white-space:nowrap}
   .laudo-tabela th small{display:block;font-weight:400;font-size:11px;color:#7f93b5}
-  .laudo-tabela td{padding:8px 10px;border-top:1px solid #16223a;color:#e9efff}
+  .laudo-tabela td{padding:9px 6px;border-top:1px solid #16223a;color:#e9efff;vertical-align:middle}
+  .laudo-tabela td.lt-v{white-space:nowrap;font-variant-numeric:tabular-nums}
   .laudo-tabela tr.selecionada td{background:#10224a}
-  .lt-sel{width:34px;text-align:center}
+  .lt-sel{width:32px;text-align:center}
   .lt-sel input{width:17px;height:17px;margin:0;cursor:pointer}
-  .lt-amostra{display:flex;align-items:center;gap:8px;min-width:180px;max-width:260px}
-  .lt-rot{overflow:hidden;text-overflow:ellipsis}
+  .lt-amostra{min-width:150px}
+  .lt-amostra .la-n{margin-right:8px;vertical-align:middle}
   .laudo-tabela tr.feita .la-n{background:#1f5a3c;color:#fff}
-  .lt-status{min-width:170px}
-  .lt-ok{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#1f5a3c;color:#fff;font-weight:700;margin-right:6px}
+  .lt-ok{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#1f5a3c;color:#fff;font-weight:700;font-size:13px}
+  .lt-status{white-space:nowrap}
   .lt-status .la-abrir{margin:2px 4px 2px 0}
-  .lt-nao{color:#7f93b5}
+  .lt-nao{color:#7f93b5;font-size:13px}
   .la-gerar:disabled{opacity:.55;cursor:not-allowed}
-  .lt-ico{display:none}
-  @media (max-width:600px){
+  .la-completo{color:#9fe0b8;font-size:14px}
+  @media (max-width:760px){
+    .laudo-topo{flex-wrap:wrap;gap:12px}
     .laudo-mini{width:72px;height:96px}
-    .lt-amostra{flex-wrap:wrap;min-width:190px;white-space:normal}
-    .lt-ico{display:block;width:100%;padding-left:30px;font-size:12px}
-    .lt-ico.sim{color:#9fe0b8}
-    .lt-ico.nao{color:#7f93b5}
+    .laudo-abrir{width:100%;justify-content:center}
+    .laudo-tabela thead{display:none}
+    .laudo-tabela,.laudo-tabela tbody{display:block}
+    .laudo-tabela tr{display:grid;grid-template-columns:32px repeat(4,1fr);gap:6px 8px;padding:12px 4px;border-top:1px solid #16223a}
+    .laudo-tabela td{border:0;padding:0}
+    .laudo-tabela td.lt-sel{grid-column:1;grid-row:1}
+    .laudo-tabela td.lt-amostra{grid-column:2/-1;grid-row:1}
+    .laudo-tabela td.lt-v{font-size:13.5px}
+    .laudo-tabela td.lt-v:nth-of-type(3){grid-column:2}
+    .laudo-tabela td.lt-v:nth-of-type(7){grid-column:2}
+    .laudo-tabela td.lt-v::before{content:attr(data-rot);display:block;font-size:11px;color:#7f93b5}
+    .laudo-tabela td.lt-status{grid-column:2/-1;white-space:normal}
+    .laudo-tabela tr.selecionada{background:#10224a}
+    .laudo-tabela tr.selecionada td{background:none}
   }
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
@@ -1708,6 +1733,7 @@ async function iniciarConta() {
     }
     hist.hidden = nome !== 'historico';
     comprar.hidden = nome !== 'comprar';
+    document.body.classList.toggle('vista-larga', nome === 'historico');
     try { window.scrollTo({ top: 0 }); } catch (_) {}
   }
   function fecharHistorico() { mostrarVista(null); }
@@ -1725,45 +1751,51 @@ async function iniciarConta() {
       porAmostra.get(i).push(x);
     }
     const nFeitas = [...porAmostra.keys()].filter(i => i < total).length;
+    const diaMes = iso => { try { return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }); } catch (_) { return ''; } };
+    const COLS = [['ph', 'pH'], ['smp', 'SMP'], ['p', 'P'], ['k', 'K'], ['mo', 'M.O.'], ['argila', 'Argila'], ['ctc', 'CTC'], ['v', 'V']];
     const linhas = rotulos.map((r, i) => {
       const its = (porAmostra.get(i) || []).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
       const v = valores[i] || {};
-      return `<tr class="${its.length ? 'feita' : ''}">
-        <td class="lt-sel"><input type="checkbox" data-sel="${i}" aria-label="Selecionar amostra ${i + 1}"></td>
-        <td class="lt-amostra"><span class="la-n">${i + 1}</span><span class="lt-rot" title="${escapeHtml(r)}">${escapeHtml(r)}</span><span class="lt-ico ${its.length ? 'sim' : 'nao'}">${its.length ? '✓ interpretada' : '○ não interpretada'}</span></td>
-        <td>${num(v.ph)}</td><td>${num(v.smp)}</td><td>${num(v.p)}</td><td>${num(v.k)}</td>
-        <td>${num(v.mo)}</td><td>${num(v.argila)}</td><td>${num(v.ctc)}</td><td>${num(v.v)}</td>
-        <td class="lt-status">${its.length
-          ? `<span class="lt-ok" title="Interpretada">✓</span>` + its.map(x => `<button type="button" class="la-abrir" data-interp="${Number(x.id)}">${escapeHtml(x.cultura || 'Abrir')} · ${fmt(x.criado_em)}</button>`).join('')
-          : '<span class="lt-nao">○ Não interpretada</span>'}</td>
+      const feita = its.length > 0;
+      return `<tr class="${feita ? 'feita' : ''}">
+        <td class="lt-sel">${feita ? '<span class="lt-ok" title="Interpretada">✓</span>' : `<input type="checkbox" data-sel="${i}" aria-label="Selecionar amostra ${i + 1}">`}</td>
+        <td class="lt-amostra"><span class="la-n">${i + 1}</span><span class="lt-rot">${escapeHtml(r)}</span></td>
+        ${COLS.map(([k, rot]) => `<td class="lt-v" data-rot="${rot}">${num(v[k])}</td>`).join('')}
+        <td class="lt-status">${feita
+          ? its.map(x => `<button type="button" class="la-abrir" data-interp="${Number(x.id)}" title="Abrir interpretação">${escapeHtml(x.cultura || 'Abrir')} · ${diaMes(x.criado_em)}</button>`).join('')
+          : '<span class="lt-nao">Não interpretada</span>'}</td>
       </tr>`;
     }).join('');
     const status = total === 1
       ? (nFeitas ? '1 amostra · interpretada' : '1 amostra · não interpretada')
       : `${total} amostras · ${nFeitas} ${nFeitas === 1 ? 'interpretada' : 'interpretadas'}`;
-    return `<article class="laudo-card" data-laudo="${escapeHtml(l.id)}">
-      <div class="laudo-topo">
-        <button type="button" class="laudo-mini" data-pdf="${escapeHtml(l.pdf_path)}" data-mini="${escapeHtml(l.pdf_path)}" title="Ver PDF">
+    const pendentes = total - nFeitas;
+    return `<details class="laudo-card" data-laudo="${escapeHtml(l.id)}">
+      <summary class="laudo-topo">
+        <button type="button" class="laudo-mini" data-pdf="${escapeHtml(l.pdf_path)}" data-mini="${escapeHtml(l.pdf_path)}" title="Abrir o PDF">
           <canvas></canvas><span class="laudo-mini-txt">PDF</span></button>
         <div class="laudo-tit">
           <div class="laudo-nome">${escapeHtml(l.arquivo || 'laudo.pdf')}</div>
           <div class="laudo-info">${escapeHtml([l.laboratorio, l.localizacao].filter(Boolean).join(' · '))}${l.laboratorio || l.localizacao ? ' · ' : ''}${fmt(l.criado_em)}</div>
-          <span class="laudo-status${nFeitas < total ? ' pendente' : ''}">${status}</span>
+          <span class="laudo-status${pendentes > 0 ? ' pendente' : ''}">${status}</span>
         </div>
-      </div>
-      <div class="laudo-tabela-wrap">
+        <span class="laudo-abrir"><span class="la-fechado">Ver amostras</span><span class="la-aberto">Ocultar</span><span class="laudo-seta" aria-hidden="true">▾</span></span>
+      </summary>
+      <div class="laudo-corpo">
         <table class="laudo-tabela">
           <thead><tr><th class="lt-sel"></th><th>Amostra</th><th>pH</th><th>SMP</th><th>P<small>mg/dm³</small></th><th>K<small>mg/dm³</small></th>
             <th>M.O.<small>%</small></th><th>Argila<small>%</small></th><th>CTC<small>pH 7</small></th><th>V<small>%</small></th><th>Interpretação</th></tr></thead>
           <tbody>${linhas}</tbody>
         </table>
+        <div class="laudo-acoes">
+          ${pendentes > 0
+            ? `<button type="button" class="la-gerar" data-gerar="${escapeHtml(l.id)}" disabled>Marque as amostras para interpretar</button>`
+            : '<span class="la-completo">✓ Todas as amostras deste laudo já foram interpretadas.</span>'}
+          <button type="button" class="botao-sec" data-pdf="${escapeHtml(l.pdf_path)}">Ver PDF</button>
+          <button type="button" class="botao-link la-apagar" data-apagar="${escapeHtml(l.id)}" data-path="${escapeHtml(l.pdf_path || '')}">Apagar laudo</button>
+        </div>
       </div>
-      <div class="laudo-acoes">
-        <button type="button" class="la-gerar" data-gerar="${escapeHtml(l.id)}" disabled>Selecione as amostras para gerar</button>
-        <button type="button" class="botao-sec" data-pdf="${escapeHtml(l.pdf_path)}">Ver PDF</button>
-        <button type="button" class="botao-link la-apagar" data-apagar="${escapeHtml(l.id)}" data-path="${escapeHtml(l.pdf_path || '')}">Apagar laudo</button>
-      </div>
-    </article>`;
+    </details>`;
   }
 
   // Miniatura: primeira pagina do PDF (pdf.js ja carregado na pagina)
@@ -1824,7 +1856,7 @@ async function iniciarConta() {
     const n = card.querySelectorAll('[data-sel]:checked').length;
     const b = card.querySelector('[data-gerar]');
     b.disabled = !n;
-    b.textContent = n ? `Gerar ${n} ${n === 1 ? 'amostra' : 'amostras'} (${n * CUSTO} créditos)` : 'Selecione as amostras para gerar';
+    b.textContent = n ? `Interpretar ${n} ${n === 1 ? 'amostra' : 'amostras'} (${n * CUSTO} créditos)` : 'Marque as amostras para interpretar';
   });
 
   lista.addEventListener('click', async ev => {
@@ -1832,6 +1864,7 @@ async function iniciarConta() {
     if (!alvo) return;
     if (alvo.dataset.interp) { abrirInterpretacao(alvo.dataset.interp); return; }
     if (alvo.dataset.pdf) {
+      ev.preventDefault();
       // abre a aba ja no clique (senao o navegador bloqueia) e depois coloca o PDF (endereco local, sem link do Supabase)
       const aba = window.open('', '_blank');
       try {
