@@ -282,9 +282,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
   /* Janela Entrar */
   .botao-entrar{padding:9px 18px;font-size:14px;border-radius:999px}
-  .login-modal{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(3,7,18,.72);backdrop-filter:blur(4px)}
+  .login-modal{position:fixed;inset:0;z-index:100;display:flex;overflow-y:auto;padding:16px;background:rgba(3,7,18,.72);backdrop-filter:blur(4px)}
   .login-modal[hidden]{display:none}
-  .login-caixa{position:relative;width:min(400px,100%);background:#0f172a;border:1px solid #24324a;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.55);padding:28px 24px 20px;text-align:center}
+  .login-caixa{position:relative;margin:auto;width:min(400px,100%);background:#0f172a;border:1px solid #24324a;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.55);padding:28px 24px 20px;text-align:center}
   .login-caixa h2{margin:10px 0 4px;font-size:21px;color:#fff}
   .login-caixa .muted{margin:0 0 18px;font-size:14px}
   .login-icone{border-radius:50%}
@@ -301,6 +301,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .login-msg.ok{background:#0f2a1d;border:1px solid #1f5a3c;color:#dff5e8}
   .login-msg.erro{background:#2a1212;border:1px solid #6b2a2a;color:#ffc9c9}
   .login-termos{margin:16px 0 0;font-size:12px;color:#7f93b5}
+  .login-abas{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;margin:14px 0 16px;background:#0b1326;border:1px solid #1f3152;border-radius:12px}
+  .login-abas button{background:none;box-shadow:none;color:#a9b8d6;padding:9px;font-size:14px;border-radius:9px}
+  .login-abas button.ativa{background:#1d3a6b;color:#fff}
+  .login-sub{margin:4px 0 16px;font-size:14px}
+  .login-form{display:flex;flex-direction:column;gap:12px;text-align:left}
+  .login-form[hidden],.login-msg[hidden]{display:none}
+  .login-campo{display:flex;flex-direction:column;gap:6px;font-size:13.5px;color:#c9d6ee}
+  .login-campo small{color:#7f93b5;font-weight:400}
+  .login-campo input{width:100%;background:#0b1730;border:1px solid #24406e;color:#fff;border-radius:12px;padding:12px 14px;font:inherit;font-size:15px}
+  .login-campo input:focus{outline:none;border-color:#2a7fff}
+  .login-senha{position:relative;display:block}
+  .login-senha input{padding-right:78px}
+  .login-olho{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;box-shadow:none;color:#8fc1ff;font-size:12.5px;padding:6px 8px}
+  .login-link{background:none;box-shadow:none;border:0;color:#8fc1ff;padding:2px 0;font-size:13.5px;font-weight:500;cursor:pointer;text-decoration:underline;align-self:flex-start}
+  .login-enviar{width:100%;padding:12px;margin-top:2px}
+  .login-bonus{margin:0;font-size:13px;color:#9fe0b8;text-align:center}
+  .login-msg.aviso{background:#2a1d0c;border:1px solid #6b4a1a;color:#ffe2b8}
+  .login-msg .login-link{display:block;margin-top:8px}
 
   /* Créditos no topo direito */
   #creditos-container{
@@ -1451,62 +1469,160 @@ async function iniciarConta() {
   const partes = ['hero', 'chat', 'etapas'].map(id => document.getElementById(id)).concat(document.querySelector('.wrap > header'));
   const marca = '<a class="topo-marca" href="./" title="Nova análise"><img src="icone.png" alt="" width="34" height="34"><span>Solo<b>+</b>IA</span></a>';
 
-  // Janela "Entrar": Google (botao oficial no dominio proprio) ou link de acesso por e-mail
-  function abrirLogin() {
+  // Janela de conta: Entrar (Google ou e-mail + senha), Criar conta, Esqueci a senha e Nova senha
+  const EMAIL_OK = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  const SENHA_OK = s => s.length >= 8 && /[A-Za-z]/.test(s) && /\d/.test(s);
+  function abrirLogin(modo = 'entrar', emailInicial = '') {
     let m = document.getElementById('loginModal');
     if (!m) {
       m = document.createElement('div');
       m.id = 'loginModal';
       m.className = 'login-modal';
-      m.innerHTML = `<div class="login-caixa" role="dialog" aria-modal="true" aria-labelledby="loginTit">
-          <button type="button" class="login-fechar" aria-label="Fechar">×</button>
-          <img src="icone.png" alt="" width="56" height="56" class="login-icone">
-          <h2 id="loginTit">Entrar no Solo+IA</h2>
-          <p class="muted">Primeira vez? A conta é criada automaticamente.</p>
-          <div id="loginGoogle" class="login-google"></div>
-          <div class="login-ou"><span>ou com seu e-mail</span></div>
-          <form id="loginEmailForm" class="login-email" novalidate>
-            <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email" inputmode="email" required aria-label="E-mail">
-            <button type="submit" id="loginEmailBtn">Receber link de acesso</button>
-          </form>
-          <div id="loginMsg" class="login-msg" role="status" hidden></div>
-          <p class="login-termos">Ao entrar, você concorda com o <a href="/consentimento" target="_blank" rel="noopener">Termo de Consentimento</a>.</p>
-        </div>`;
+      m.innerHTML = '<div class="login-caixa" role="dialog" aria-modal="true" aria-labelledby="loginTit"></div>';
       document.body.appendChild(m);
-      const fechar = () => { m.hidden = true; };
-      m.querySelector('.login-fechar').addEventListener('click', fechar);
-      m.addEventListener('click', ev => { if (ev.target === m) fechar(); });
-      document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !m.hidden) fechar(); });
-      const msg = m.querySelector('#loginMsg');
-      const mostrar = (txt, tipo) => { msg.hidden = !txt; msg.className = 'login-msg' + (tipo ? ' ' + tipo : ''); msg.innerHTML = txt || ''; };
-      // Google: botao oficial no dominio proprio; fora dele, o login por redirecionamento
-      window.SoloiaConta.botaoGoogle(m.querySelector('#loginGoogle'), () => location.reload(),
-        () => mostrar('Não foi possível entrar com o Google. Tente de novo.', 'erro')).then(ok => {
+      m.addEventListener('click', ev => { if (ev.target === m && m.dataset.modo !== 'nova') m.hidden = true; });
+      document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !m.hidden && m.dataset.modo !== 'nova') m.hidden = true; });
+    }
+    const caixa = m.querySelector('.login-caixa');
+    m.dataset.modo = modo;
+    const campoSenha = (id, rotulo, auto) => `<label class="login-campo">${rotulo}
+        <span class="login-senha"><input type="password" id="${id}" autocomplete="${auto}" minlength="8" required>
+        <button type="button" class="login-olho" data-olho="${id}" aria-label="Mostrar senha">mostrar</button></span></label>`;
+    const google = '<div class="login-google" id="loginGoogle"></div><div class="login-ou"><span>ou com seu e-mail</span></div>';
+    const abas = `<div class="login-abas" role="tablist">
+        <button type="button" role="tab" data-ir="entrar" class="${modo === 'entrar' ? 'ativa' : ''}">Entrar</button>
+        <button type="button" role="tab" data-ir="criar" class="${modo === 'criar' ? 'ativa' : ''}">Criar conta</button></div>`;
+    const topo = t => `${modo !== 'nova' ? '<button type="button" class="login-fechar" aria-label="Fechar">×</button>' : ''}
+        <img src="icone.png" alt="" width="52" height="52" class="login-icone"><h2 id="loginTit">${t}</h2>`;
+    const telas = {
+      entrar: `${topo('Entrar no Solo+IA')}${abas}${google}
+        <form class="login-form" id="formEntrar" novalidate>
+          <label class="login-campo">E-mail<input type="email" id="lgEmail" autocomplete="email" inputmode="email" required></label>
+          ${campoSenha('lgSenha', 'Senha', 'current-password')}
+          <button type="button" class="login-link" data-ir="esqueci">Esqueci minha senha</button>
+          <button type="submit" class="login-enviar">Entrar</button>
+        </form>`,
+      criar: `${topo('Criar sua conta')}${abas}${google}
+        <form class="login-form" id="formCriar" novalidate>
+          <label class="login-campo">Nome<input type="text" id="lgNome" autocomplete="name" required></label>
+          <label class="login-campo">E-mail<input type="email" id="lgEmail" autocomplete="email" inputmode="email" required></label>
+          ${campoSenha('lgSenha', 'Senha <small>(mínimo 8 caracteres, com letras e números)</small>', 'new-password')}
+          ${campoSenha('lgSenha2', 'Confirmar senha', 'new-password')}
+          <button type="submit" class="login-enviar">Criar conta</button>
+          <p class="login-bonus">Conta nova ganha <strong>50 créditos</strong> para começar.</p>
+        </form>`,
+      esqueci: `${topo('Recuperar senha')}
+        <p class="muted login-sub">Digite o e-mail da sua conta. Enviaremos um link para você criar uma senha nova.</p>
+        <form class="login-form" id="formEsqueci" novalidate>
+          <label class="login-campo">E-mail<input type="email" id="lgEmail" autocomplete="email" inputmode="email" required></label>
+          <button type="submit" class="login-enviar">Enviar link</button>
+          <button type="button" class="login-link" data-ir="entrar">← Voltar para entrar</button>
+        </form>`,
+      nova: `${topo('Criar nova senha')}
+        <form class="login-form" id="formNova" novalidate>
+          ${campoSenha('lgSenha', 'Nova senha <small>(mínimo 8 caracteres, com letras e números)</small>', 'new-password')}
+          ${campoSenha('lgSenha2', 'Confirmar nova senha', 'new-password')}
+          <button type="submit" class="login-enviar">Salvar nova senha</button>
+        </form>`,
+    };
+    caixa.innerHTML = telas[modo] + '<div id="loginMsg" class="login-msg" role="status" hidden></div>'
+      + (modo === 'nova' ? '' : '<p class="login-termos">Ao continuar, você concorda com o <a href="/consentimento" target="_blank" rel="noopener">Termo de Consentimento</a>.</p>');
+    const msg = caixa.querySelector('#loginMsg');
+    const mostrar = (html, tipo) => { msg.hidden = !html; msg.className = 'login-msg' + (tipo ? ' ' + tipo : ''); msg.innerHTML = html || ''; };
+    const val = id => (caixa.querySelector('#' + id)?.value || '').trim();
+    const emailEl = caixa.querySelector('#lgEmail');
+    if (emailEl && emailInicial) emailEl.value = emailInicial;
+
+    caixa.querySelector('.login-fechar')?.addEventListener('click', () => { m.hidden = true; });
+    caixa.querySelectorAll('[data-ir]').forEach(b => b.addEventListener('click', () => abrirLogin(b.dataset.ir, val('lgEmail'))));
+    caixa.querySelectorAll('[data-olho]').forEach(b => b.addEventListener('click', () => {
+      const i = caixa.querySelector('#' + b.dataset.olho);
+      const ver = i.type === 'password';
+      i.type = ver ? 'text' : 'password';
+      b.textContent = ver ? 'ocultar' : 'mostrar';
+    }));
+    // Google: botao oficial no dominio proprio; fora dele, o login por redirecionamento
+    const g = caixa.querySelector('#loginGoogle');
+    if (g) {
+      window.SoloiaConta.botaoGoogle(g, () => location.reload(), () => mostrar('Não foi possível entrar com o Google. Tente de novo.', 'erro')).then(ok => {
         if (ok) return;
-        const g = m.querySelector('#loginGoogle');
         g.innerHTML = `<button type="button" class="botao-google">${ICONE_GOOGLE}<span>Continuar com Google</span></button>`;
         g.querySelector('button').addEventListener('click', () => window.SoloiaConta.entrar());
       });
-      m.querySelector('#loginEmailForm').addEventListener('submit', async ev => {
-        ev.preventDefault();
-        const email = m.querySelector('#loginEmail').value.trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { mostrar('Digite um e-mail válido.', 'erro'); return; }
-        const btn = m.querySelector('#loginEmailBtn');
-        btn.disabled = true; btn.textContent = 'Enviando…';
-        try {
-          await window.SoloiaConta.entrarEmail(email);
-          mostrar(`Enviamos um link de acesso para <strong>${escapeHtml(email)}</strong>. Abra o e-mail <strong>neste mesmo navegador</strong> e clique no link. Não chegou? Olhe o spam.`, 'ok');
-          btn.textContent = 'Reenviar link';
-        } catch (e) {
-          const limite = /rate|limit|seconds/i.test(String(e?.message || ''));
-          mostrar(limite ? 'Muitos pedidos seguidos. Espere um minuto e tente de novo.' : 'Não foi possível enviar o link. Confira o e-mail e tente de novo.', 'erro');
-          btn.textContent = 'Receber link de acesso';
-        }
-        btn.disabled = false;
-      });
     }
+    const ocupado = (form, on, texto) => {
+      const b = form.querySelector('.login-enviar');
+      if (!b.dataset.txt) b.dataset.txt = b.textContent;
+      b.disabled = on;
+      b.textContent = on ? texto : b.dataset.txt;
+    };
+    const reenviar = email => {
+      mostrar(`Confirme seu e-mail primeiro: clique no link que enviamos para <strong>${escapeHtml(email)}</strong> (olhe também o spam).
+        <button type="button" class="login-link" id="lgReenviar">Reenviar e-mail de confirmação</button>`, 'aviso');
+      caixa.querySelector('#lgReenviar').addEventListener('click', async () => {
+        try { await window.SoloiaConta.reenviarConfirmacao(email); mostrar('E-mail de confirmação reenviado. Confira sua caixa de entrada.', 'ok'); }
+        catch (e) { mostrar(escapeHtml(e.message), 'erro'); }
+      });
+    };
+
+    caixa.querySelector('#formEntrar')?.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const email = val('lgEmail'), senha = caixa.querySelector('#lgSenha').value;
+      if (!EMAIL_OK(email)) return mostrar('Digite um e-mail válido.', 'erro');
+      if (!senha) return mostrar('Digite sua senha.', 'erro');
+      ocupado(ev.target, true, 'Entrando…');
+      try { await window.SoloiaConta.entrarSenha(email, senha); location.reload(); return; }
+      catch (e) { if (e.message === 'nao_confirmado') reenviar(email); else mostrar(escapeHtml(e.message), 'erro'); }
+      ocupado(ev.target, false);
+    });
+    caixa.querySelector('#formCriar')?.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const nome = val('lgNome'), email = val('lgEmail');
+      const senha = caixa.querySelector('#lgSenha').value, senha2 = caixa.querySelector('#lgSenha2').value;
+      if (nome.length < 2) return mostrar('Digite seu nome.', 'erro');
+      if (!EMAIL_OK(email)) return mostrar('Digite um e-mail válido.', 'erro');
+      if (!SENHA_OK(senha)) return mostrar('A senha precisa ter pelo menos 8 caracteres, com letras e números.', 'erro');
+      if (senha !== senha2) return mostrar('As senhas não são iguais.', 'erro');
+      ocupado(ev.target, true, 'Criando conta…');
+      try {
+        const r = await window.SoloiaConta.criarConta({ nome, email, senha });
+        if (r === 'entrou') { location.reload(); return; }
+        ev.target.hidden = true;
+        caixa.querySelector('#loginGoogle')?.remove();
+        caixa.querySelector('.login-ou')?.remove();
+        mostrar(`<strong>Conta criada!</strong> Enviamos um e-mail de confirmação para <strong>${escapeHtml(email)}</strong>.
+          Clique no link do e-mail para ativar sua conta e entrar. Não chegou? Olhe o spam.
+          <button type="button" class="login-link" id="lgReenv2">Reenviar e-mail</button>`, 'ok');
+        caixa.querySelector('#lgReenv2').addEventListener('click', async () => {
+          try { await window.SoloiaConta.reenviarConfirmacao(email); } catch (_) {}
+        });
+      } catch (e) { mostrar(escapeHtml(e.message), 'erro'); ocupado(ev.target, false); }
+    });
+    caixa.querySelector('#formEsqueci')?.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const email = val('lgEmail');
+      if (!EMAIL_OK(email)) return mostrar('Digite um e-mail válido.', 'erro');
+      ocupado(ev.target, true, 'Enviando…');
+      try {
+        await window.SoloiaConta.esqueciSenha(email);
+        mostrar(`Se existir uma conta com <strong>${escapeHtml(email)}</strong>, enviamos um link para criar uma senha nova. Confira também o spam.`, 'ok');
+      } catch (e) { mostrar(escapeHtml(e.message), 'erro'); }
+      ocupado(ev.target, false);
+    });
+    caixa.querySelector('#formNova')?.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const senha = caixa.querySelector('#lgSenha').value, senha2 = caixa.querySelector('#lgSenha2').value;
+      if (!SENHA_OK(senha)) return mostrar('A senha precisa ter pelo menos 8 caracteres, com letras e números.', 'erro');
+      if (senha !== senha2) return mostrar('As senhas não são iguais.', 'erro');
+      ocupado(ev.target, true, 'Salvando…');
+      try {
+        await window.SoloiaConta.definirSenha(senha);
+        mostrar('Senha alterada! Você já está conectado.', 'ok');
+        setTimeout(() => { location.href = location.pathname; }, 1500);
+      } catch (e) { mostrar(escapeHtml(e.message), 'erro'); ocupado(ev.target, false); }
+    });
     m.hidden = false;
-    setTimeout(() => m.querySelector('#loginEmail')?.focus(), 50);
+    setTimeout(() => caixa.querySelector('input')?.focus(), 50);
   }
   window.SoloiaAbrirLogin = abrirLogin;
   bar.hidden = false;
@@ -1555,6 +1671,11 @@ async function iniciarConta() {
       </div>
     </div>`;
   renderCreditos(auth.creditos);
+  // volta do e-mail "Esqueci minha senha": pede a senha nova
+  if (new URLSearchParams(location.search).get('nova-senha')) {
+    try { history.replaceState(null, '', location.pathname); } catch (_) {}
+    abrirLogin('nova');
+  }
 
   const btnConta = document.getElementById('btnConta');
   btnConta.querySelector('img')?.addEventListener('error', ev => ev.target.replaceWith(document.createTextNode(inicial)));

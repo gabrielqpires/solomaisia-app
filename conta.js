@@ -74,11 +74,52 @@
     await c.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
   }
 
-  // Login por e-mail: link de acesso (sem senha). O link precisa ser aberto neste mesmo navegador.
-  async function entrarEmail(email) {
+  // Conta com e-mail e senha. Mensagens do Supabase traduzidas para o usuario.
+  function erroAmigavel(e) {
+    const m = String(e?.message || e || '');
+    if (/invalid login credentials/i.test(m)) return 'E-mail ou senha incorretos.';
+    if (/email not confirmed/i.test(m)) return 'nao_confirmado';
+    if (/already registered|already exists/i.test(m)) return 'Já existe uma conta com este e-mail. Entre ou use "Esqueci minha senha".';
+    if (/password.*(at least|characters|short)|weak/i.test(m)) return 'A senha precisa ter pelo menos 8 caracteres, com letras e números.';
+    if (/rate|limit|seconds|too many/i.test(m)) return 'Muitas tentativas seguidas. Espere um minuto e tente de novo.';
+    if (/same password|different from the old/i.test(m)) return 'A nova senha precisa ser diferente da anterior.';
+    return 'Não foi possível concluir. Confira os dados e tente de novo.';
+  }
+  const volta = () => location.origin + location.pathname;
+
+  async function entrarSenha(email, senha) {
     const c = await cli();
-    const { error } = await c.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: true } });
-    if (error) throw error;
+    const { error } = await c.auth.signInWithPassword({ email, password: senha });
+    if (error) throw new Error(erroAmigavel(error));
+  }
+
+  // Devolve 'confirmar' (precisa clicar no e-mail) ou 'entrou' (confirmacao de e-mail desligada)
+  async function criarConta({ nome, email, senha }) {
+    const c = await cli();
+    const { data, error } = await c.auth.signUp({ email, password: senha,
+      options: { data: { full_name: nome }, emailRedirectTo: volta() } });
+    if (error) throw new Error(erroAmigavel(error));
+    // e-mail ja cadastrado: o Supabase responde sem erro, mas sem identidades
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error(erroAmigavel('already registered'));
+    return data?.session ? 'entrou' : 'confirmar';
+  }
+
+  async function reenviarConfirmacao(email) {
+    const c = await cli();
+    const { error } = await c.auth.resend({ type: 'signup', email, options: { emailRedirectTo: volta() } });
+    if (error) throw new Error(erroAmigavel(error));
+  }
+
+  async function esqueciSenha(email) {
+    const c = await cli();
+    const { error } = await c.auth.resetPasswordForEmail(email, { redirectTo: volta() + '?nova-senha=1' });
+    if (error) throw new Error(erroAmigavel(error));
+  }
+
+  async function definirSenha(senha) {
+    const c = await cli();
+    const { error } = await c.auth.updateUser({ password: senha });
+    if (error) throw new Error(erroAmigavel(error));
   }
 
   // Botao oficial do Google (Google Identity Services): a janela do Google mostra solomaisia.com.br.
@@ -276,6 +317,6 @@
     } catch (_) { return ''; }
   }
 
-  window.SoloiaConta = { sessao, entrar, entrarEmail, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
+  window.SoloiaConta = { sessao, entrar, entrarSenha, criarConta, reenviarConfirmacao, esqueciSenha, definirSenha, erroAmigavel, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
     guardarLaudo, listarLaudos, lerLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
 })();
