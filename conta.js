@@ -190,7 +190,7 @@
 
   // Laudo lido: guarda o PDF (pasta privada do usuario) e a leitura, para ver o PDF depois e gerar outras
   // amostras sem ler de novo. Devolve o id do laudo (ou null se falhar; a analise segue normal).
-  async function guardarLaudo({ file, dados, cultura }) {
+  async function guardarLaudo({ file, dados, cultura, pastaId }) {
     try {
       const s = await sessaoSupabase();
       if (!s) return null;
@@ -207,7 +207,7 @@
         mo: v(a, 'materiaOrganicaPercentual'), argila: v(a, 'argilaPercentual'), ctc: v(a, 'ctcPh7CmolcDm3'), v: v(a, 'saturacaoBasesPercentual') }));
       const { data, error } = await cliente.from('laudos').insert({
         arquivo: file?.name || null, laboratorio: dados.laboratorio || null, localizacao: dados.localizacao || null, cultura: cultura || null,
-        total_amostras: rotulos.length || 1, rotulos, valores, leitura: dados, pdf_path: pdfPath,
+        total_amostras: rotulos.length || 1, rotulos, valores, leitura: dados, pdf_path: pdfPath, pasta_id: pastaId || null,
       }).select('id').single();
       if (error) { console.error('[Solo+IA] guardar laudo:', error); return null; }
       return data.id;
@@ -218,9 +218,9 @@
   async function listarLaudos() {
     const c = await cli();
     const { data, error } = await c.from('laudos')
-      .select('id, criado_em, arquivo, laboratorio, localizacao, cultura, total_amostras, rotulos, valores, pdf_path, interpretacoes(id, criado_em, cultura, amostra, amostra_indice)')
+      .select('id, criado_em, arquivo, laboratorio, localizacao, cultura, total_amostras, rotulos, valores, pdf_path, pasta_id, interpretacoes(id, criado_em, cultura, amostra, amostra_indice)')
       .not('pdf_path', 'is', null)
-      .order('criado_em', { ascending: false }).limit(100);
+      .order('criado_em', { ascending: false }).limit(500);
     if (error) throw error;
     return { laudos: data || [] };
   }
@@ -259,6 +259,36 @@
   // endereco local (blob:https://www.solomaisia.com.br/...) para abrir o PDF numa aba
   async function enderecoPdf(caminho) {
     return URL.createObjectURL(new Blob([await pdfBlob(caminho)], { type: 'application/pdf' }));
+  }
+
+  // Pastas (organizacao por cliente / fazenda / safra)
+  async function listarPastas() {
+    const c = await cli();
+    const { data, error } = await c.from('pastas').select('id, nome, pai_id, criado_em').order('nome');
+    if (error) throw error;
+    return data || [];
+  }
+  async function criarPasta(nome, paiId) {
+    const c = await cli();
+    const { data, error } = await c.from('pastas').insert({ nome: String(nome).trim().slice(0, 80), pai_id: paiId || null }).select('id').single();
+    if (error) throw error;
+    return data.id;
+  }
+  async function renomearPasta(id, nome) {
+    const c = await cli();
+    const { error } = await c.from('pastas').update({ nome: String(nome).trim().slice(0, 80) }).eq('id', id);
+    if (error) throw error;
+  }
+  // subpastas somem junto; os laudos voltam para "Sem pasta"
+  async function apagarPasta(id) {
+    const c = await cli();
+    const { error } = await c.from('pastas').delete().eq('id', id);
+    if (error) throw error;
+  }
+  async function moverLaudo(laudoId, pastaId) {
+    const c = await cli();
+    const { error } = await c.from('laudos').update({ pasta_id: pastaId || null }).eq('id', laudoId);
+    if (error) throw error;
   }
 
   // apaga o PDF, as interpretacoes do laudo e o laudo
@@ -318,5 +348,5 @@
   }
 
   window.SoloiaConta = { sessao, entrar, entrarSenha, criarConta, reenviarConfirmacao, esqueciSenha, definirSenha, erroAmigavel, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
-    guardarLaudo, listarLaudos, lerLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
+    guardarLaudo, listarLaudos, lerLaudo, listarPastas, criarPasta, renomearPasta, apagarPasta, moverLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
 })();

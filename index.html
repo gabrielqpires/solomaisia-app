@@ -277,6 +277,30 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .laudo-tabela tr.selecionada{background:#10224a}
     .laudo-tabela tr.selecionada td{background:none}
   }
+  /* Pastas */
+  .pastas-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+  .pastas-trilha{display:flex;align-items:center;flex-wrap:wrap;gap:4px;font-size:15px;min-width:0}
+  .pastas-trilha button{background:none;box-shadow:none;border:0;color:#8fc1ff;padding:4px 6px;font-size:15px;font-weight:500;border-radius:8px;cursor:pointer}
+  .pastas-trilha button:hover{background:#16223d;color:#fff}
+  .pastas-trilha strong{color:#fff;padding:4px 6px}
+  .pastas-sep{color:#5d7196}
+  .pasta-nova{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;padding:12px;border:1px solid #24406e;border-radius:12px;background:#0c1528}
+  .pasta-nova[hidden]{display:none}
+  .pasta-nova input{flex:1;min-width:200px;background:#0b1730;border:1px solid #24406e;color:#fff;border-radius:10px;padding:10px 12px;font:inherit;font-size:14.5px}
+  .pasta-nova input:focus{outline:none;border-color:#2a7fff}
+  .pastas-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-bottom:16px}
+  .pasta-tile{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#0f1a31;border:1px solid #24406e;border-radius:12px;cursor:pointer;min-width:0}
+  .pasta-tile:hover,.pasta-tile:focus{border-color:#2a7fff;outline:none;background:#10224a}
+  .pasta-ico{font-size:26px;line-height:1}
+  .pasta-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+  .pasta-nome{font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pasta-info{font-size:12.5px;color:#a9b8d6}
+  .pasta-acoes{display:flex;gap:2px;opacity:.6}
+  .pasta-tile:hover .pasta-acoes{opacity:1}
+  .pasta-acoes button{background:none;box-shadow:none;border:0;padding:6px;font-size:14px;border-radius:8px;color:#c9d6ee;cursor:pointer}
+  .pasta-acoes button:hover{background:#1d3a6b}
+  .la-mover{display:flex;align-items:center;gap:6px;font-size:14px;color:#a9b8d6}
+  .la-mover select{background:#0b1730;border:1px solid #24406e;color:#dfeaff;border-radius:10px;padding:8px 10px;font:inherit;font-size:13.5px;max-width:220px}
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
     .cf-acoes-multi button{width:100%}
@@ -1135,7 +1159,7 @@ startBtn.addEventListener('click', async () => {
     }
     trackEvent('laudo_lido', { cultura: culturaId, amostras: dados.amostras.length, laboratorio: dados.laboratorio || '' });
     // site proprio: guarda o PDF e a leitura (Minhas analises: ver PDF e gerar outras amostras sem ler de novo)
-    const laudoId = (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) ? window.SoloiaConta.guardarLaudo({ file: f, dados, cultura: culturaId }) : Promise.resolve(null);
+    const laudoId = (!window.SOLOIA_EMBUTIDO && window.SoloiaConta) ? window.SoloiaConta.guardarLaudo({ file: f, dados, cultura: culturaId, pastaId: window.SoloiaPastaEscolhida?.() || null }) : Promise.resolve(null);
     abrirConfirmacao({ f, culturaId, culture, dados, laudoId });
   } catch (err) {
     avisarForm('Erro de conexão ao ler o laudo: ' + escapeHtml(String(err.message || err)));
@@ -1702,6 +1726,42 @@ async function iniciarConta() {
     abrirLogin('nova');
   }
 
+
+  // Campo "Pasta" no formulario: o laudo ja entra organizado (lembra a ultima pasta usada)
+  (function campoPasta() {
+    const cultura = document.getElementById('culture')?.closest('.field');
+    if (!cultura || document.getElementById('campoPasta')) return;
+    const campo = document.createElement('div');
+    campo.className = 'field';
+    campo.id = 'campoPasta';
+    campo.innerHTML = '<label for="pastaSel">📁 Pasta <span class="muted" style="font-weight:400">(opcional — ex.: cliente ou fazenda)</span></label><select id="pastaSel"></select>';
+    cultura.after(campo);
+    const sel = campo.querySelector('select');
+    let ultima = null;
+    try { ultima = localStorage.getItem('soloia:pasta'); } catch (_) {}
+    async function preencher(escolher) {
+      try {
+        const pastas = await window.SoloiaConta.listarPastas();
+        dadosHist.pastas = pastas;
+        const alvo = escolher !== undefined ? escolher : (pastas.some(p => p.id === ultima) ? ultima : '');
+        sel.innerHTML = opcoesPastas(alvo, { semPasta: 'Sem pasta' }) + '<option value="__nova">+ Nova pasta…</option>';
+        sel.value = alvo || '';
+      } catch (_) { sel.innerHTML = '<option value="">Sem pasta</option>'; }
+    }
+    sel.addEventListener('change', async () => {
+      if (sel.value === '__nova') {
+        const nome = prompt('Nome da nova pasta (ex.: Cliente João):');
+        if (nome && nome.trim()) {
+          try { const id = await window.SoloiaConta.criarPasta(nome, null); await preencher(id); } catch (e) { alert('Não foi possível criar a pasta.'); await preencher(''); }
+        } else { await preencher(''); }
+      }
+      try { localStorage.setItem('soloia:pasta', sel.value || ''); } catch (_) {}
+    });
+    window.SoloiaAtualizarPastasForm = () => preencher(sel.value === '__nova' ? '' : sel.value);
+    window.SoloiaPastaEscolhida = () => (sel.value && sel.value !== '__nova' ? sel.value : null);
+    preencher();
+  })();
+
   const btnConta = document.getElementById('btnConta');
   btnConta.querySelector('img')?.addEventListener('error', ev => ev.target.replaceWith(document.createTextNode(inicial)));
   const menu = document.getElementById('menuConta');
@@ -1792,28 +1852,116 @@ async function iniciarConta() {
             ? `<button type="button" class="la-gerar" data-gerar="${escapeHtml(l.id)}" disabled>Marque as amostras para interpretar</button>`
             : '<span class="la-completo">✓ Todas as amostras deste laudo já foram interpretadas.</span>'}
           <button type="button" class="botao-sec" data-pdf="${escapeHtml(l.pdf_path)}">Ver PDF</button>
+          <label class="la-mover">📁 <select data-mover="${escapeHtml(l.id)}" aria-label="Mover para a pasta">${opcoesPastas(l.pasta_id || null)}</select></label>
           <button type="button" class="botao-link la-apagar" data-apagar="${escapeHtml(l.id)}" data-path="${escapeHtml(l.pdf_path || '')}">Apagar laudo</button>
         </div>
       </div>
     </details>`;
   }
 
-  // Miniatura: primeira pagina do PDF (pdf.js ja carregado na pagina)
+  // Miniatura: primeira pagina do PDF (pdf.js ja carregado na pagina); fica em memoria entre as telas
+  const miniaturas = new Map();
   async function desenharMiniaturas() {
     for (const b of lista.querySelectorAll('[data-mini]')) {
       try {
+        const cv = b.querySelector('canvas');
+        const pronta = miniaturas.get(b.dataset.mini);
+        if (pronta) {
+          const img = new Image();
+          img.onload = () => { cv.width = img.width; cv.height = img.height; cv.getContext('2d').drawImage(img, 0, 0); b.classList.add('pronta'); };
+          img.src = pronta;
+          continue;
+        }
         if (!window.pdfjsLib) return;
         const blob = await window.SoloiaConta.pdfBlob(b.dataset.mini);
         const pdf = await window.pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
         const pag = await pdf.getPage(1);
         const base = pag.getViewport({ scale: 1 });
         const vp = pag.getViewport({ scale: (96 * 2) / base.width });
-        const cv = b.querySelector('canvas');
         cv.width = vp.width; cv.height = vp.height;
         await pag.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+        miniaturas.set(b.dataset.mini, cv.toDataURL('image/png'));
         b.classList.add('pronta');
       } catch (e) { /* fica o icone "PDF" */ }
     }
+  }
+
+  // Pastas: navegacao (trilha), subpastas e laudos da pasta atual. Tudo carregado de uma vez e filtrado aqui.
+  let pastaAtual = null;
+  let dadosHist = { pastas: [], laudos: [] };
+  function filhosDe() {
+    const m = new Map();
+    for (const p of dadosHist.pastas) { const k = p.pai_id || ''; if (!m.has(k)) m.set(k, []); m.get(k).push(p); }
+    for (const l of m.values()) l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    return m;
+  }
+  function caminhoDe(id) {
+    const out = [];
+    let p = dadosHist.pastas.find(x => x.id === id);
+    while (p) { out.unshift(p); p = dadosHist.pastas.find(x => x.id === p.pai_id); }
+    return out;
+  }
+  function contarPasta(id, filhos) {
+    let laudos = 0, subpastas = 0;
+    const pilha = [id];
+    while (pilha.length) {
+      const f = pilha.pop();
+      laudos += dadosHist.laudos.filter(l => l.pasta_id === f).length;
+      for (const s of filhos.get(f) || []) { subpastas++; pilha.push(s.id); }
+    }
+    return { laudos, subpastas };
+  }
+  // <option> de todas as pastas, com recuo pela profundidade
+  function opcoesPastas(selecionada, { semPasta = 'Sem pasta' } = {}) {
+    const filhos = filhosDe();
+    const out = [`<option value="">${semPasta}</option>`];
+    const andar = (paiId, nivel) => {
+      for (const p of filhos.get(paiId || '') || []) {
+        out.push(`<option value="${escapeHtml(p.id)}"${p.id === selecionada ? ' selected' : ''}>${'   '.repeat(nivel)}${nivel ? '└ ' : ''}${escapeHtml(p.nome)}</option>`);
+        andar(p.id, nivel + 1);
+      }
+    };
+    andar(null, 0);
+    return out.join('');
+  }
+  window.SoloiaOpcoesPastas = opcoesPastas;
+
+  function renderHistorico() {
+    const filhos = filhosDe();
+    if (pastaAtual && !dadosHist.pastas.some(p => p.id === pastaAtual)) pastaAtual = null;
+    const trilha = [{ id: '', nome: 'Minhas análises' }, ...caminhoDe(pastaAtual)];
+    const subs = filhos.get(pastaAtual || '') || [];
+    const laudos = dadosHist.laudos.filter(l => (l.pasta_id || null) === pastaAtual);
+    const vazio = !subs.length && !laudos.length;
+    lista.innerHTML = `
+      <div class="pastas-cab">
+        <nav class="pastas-trilha" aria-label="Pastas">${!pastaAtual ? '<span class="muted">Organize por cliente, fazenda ou safra</span>' : trilha.map((p, i) => i < trilha.length - 1
+          ? `<button type="button" data-ir-pasta="${escapeHtml(p.id)}">${escapeHtml(p.nome)}</button><span class="pastas-sep">›</span>`
+          : `<strong>${escapeHtml(p.nome)}</strong>`).join('')}</nav>
+        <button type="button" class="botao-sec" id="btnNovaPasta">+ Nova pasta</button>
+      </div>
+      <form id="formNovaPasta" class="pasta-nova" hidden>
+        <input id="nomeNovaPasta" maxlength="80" placeholder="Nome da pasta (ex.: Cliente João, Fazenda Santa Rita, Safra 2026)" autocomplete="off">
+        <button type="submit">Criar pasta</button>
+        <button type="button" class="botao-link" id="cancelarPasta">Cancelar</button>
+      </form>
+      ${subs.length ? `<div class="pastas-grade">${subs.map(p => {
+        const c = contarPasta(p.id, filhos);
+        return `<div class="pasta-tile" role="button" tabindex="0" data-abrir-pasta="${escapeHtml(p.id)}">
+          <span class="pasta-ico" aria-hidden="true">📁</span>
+          <span class="pasta-txt"><span class="pasta-nome" title="${escapeHtml(p.nome)}">${escapeHtml(p.nome)}</span>
+            <span class="pasta-info">${c.laudos} ${c.laudos === 1 ? 'laudo' : 'laudos'}${c.subpastas ? ` · ${c.subpastas} ${c.subpastas === 1 ? 'subpasta' : 'subpastas'}` : ''}</span></span>
+          <span class="pasta-acoes">
+            <button type="button" data-renomear="${escapeHtml(p.id)}" title="Renomear" aria-label="Renomear pasta">✎</button>
+            <button type="button" data-apagar-pasta="${escapeHtml(p.id)}" title="Apagar" aria-label="Apagar pasta">🗑</button>
+          </span>
+        </div>`;
+      }).join('')}</div>` : ''}
+      ${laudos.map(cartaoLaudo).join('')}
+      ${vazio ? (pastaAtual
+        ? '<div class="historico-vazio"><p>Pasta vazia.</p><p class="muted">Mova laudos para cá pelo “Mover para” de cada laudo, ou escolha esta pasta ao enviar um laudo novo.</p></div>'
+        : '<div class="historico-vazio"><p>Nenhum laudo ainda.</p><p class="muted">Os laudos que você enviar aparecem aqui, com o PDF e as interpretações de cada amostra. Crie pastas para organizar por cliente, fazenda ou safra.</p></div>') : ''}`;
+    desenharMiniaturas();
   }
 
   async function abrirLista() {
@@ -1822,14 +1970,32 @@ async function iniciarConta() {
     lista.hidden = false;
     lista.innerHTML = '<p class="muted">Carregando…</p>';
     try {
-      const { laudos } = await window.SoloiaConta.listarLaudos();
-      if (!laudos.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhum laudo ainda.</p><p class="muted">Os laudos que você enviar aparecem aqui, com o PDF e as interpretações de cada amostra.</p></div>'; return; }
-      lista.innerHTML = laudos.map(cartaoLaudo).join('');
-      desenharMiniaturas();
+      const [{ laudos }, pastas] = await Promise.all([window.SoloiaConta.listarLaudos(), window.SoloiaConta.listarPastas()]);
+      dadosHist = { laudos, pastas };
+      renderHistorico();
     } catch (e) {
       lista.innerHTML = '<p class="muted">Não foi possível carregar suas análises. Tente de novo.</p>';
     }
   }
+
+  async function recarregarPastas() {
+    dadosHist.pastas = await window.SoloiaConta.listarPastas();
+    renderHistorico();
+    window.SoloiaAtualizarPastasForm?.();
+  }
+
+  lista.addEventListener('submit', async ev => {
+    if (ev.target.id !== 'formNovaPasta') return;
+    ev.preventDefault();
+    const nome = lista.querySelector('#nomeNovaPasta').value.trim();
+    if (!nome) return;
+    try { await window.SoloiaConta.criarPasta(nome, pastaAtual); await recarregarPastas(); }
+    catch (e) { alert('Não foi possível criar a pasta.'); }
+  });
+  lista.addEventListener('keydown', ev => {
+    const t = ev.target.closest('[data-abrir-pasta]');
+    if (t && (ev.key === 'Enter' || ev.key === ' ') && ev.target === t) { ev.preventDefault(); t.click(); }
+  });
 
   async function abrirInterpretacao(id) {
     lista.hidden = true;
@@ -1846,6 +2012,47 @@ async function iniciarConta() {
       ver.innerHTML = '<p class="muted">Não foi possível abrir esta análise.</p>';
     }
   }
+
+
+  lista.addEventListener('click', async ev => {
+    const b = ev.target.closest('[data-ir-pasta],[data-abrir-pasta],#btnNovaPasta,#cancelarPasta,[data-renomear],[data-apagar-pasta]');
+    if (!b) return;
+    if (b.dataset.renomear) {
+      const p = dadosHist.pastas.find(x => x.id === b.dataset.renomear);
+      const nome = prompt('Novo nome da pasta:', p?.nome || '');
+      if (nome && nome.trim() && nome.trim() !== p?.nome) {
+        try { await window.SoloiaConta.renomearPasta(b.dataset.renomear, nome); await recarregarPastas(); } catch (e) { alert('Não foi possível renomear.'); }
+      }
+      return;
+    }
+    if (b.dataset.apagarPasta) {
+      const p = dadosHist.pastas.find(x => x.id === b.dataset.apagarPasta);
+      if (!confirm(`Apagar a pasta "${p?.nome || ''}" e as subpastas dela?\nOs laudos não são apagados: eles voltam para "Sem pasta".`)) return;
+      try {
+        await window.SoloiaConta.apagarPasta(b.dataset.apagarPasta);
+        const [{ laudos }, pastas] = await Promise.all([window.SoloiaConta.listarLaudos(), window.SoloiaConta.listarPastas()]);
+        dadosHist = { laudos, pastas };
+        renderHistorico();
+        window.SoloiaAtualizarPastasForm?.();
+      } catch (e) { alert('Não foi possível apagar a pasta.'); }
+      return;
+    }
+    if ('irPasta' in b.dataset) { pastaAtual = b.dataset.irPasta || null; renderHistorico(); try { window.scrollTo({ top: 0 }); } catch (_) {} return; }
+    if (b.dataset.abrirPasta) { pastaAtual = b.dataset.abrirPasta; renderHistorico(); try { window.scrollTo({ top: 0 }); } catch (_) {} return; }
+    if (b.id === 'btnNovaPasta') { const f = lista.querySelector('#formNovaPasta'); f.hidden = false; f.querySelector('input').focus(); return; }
+    if (b.id === 'cancelarPasta') { lista.querySelector('#formNovaPasta').hidden = true; }
+  });
+  lista.addEventListener('change', async ev => {
+    const s = ev.target.closest('[data-mover]');
+    if (!s) return;
+    const novo = s.value || null;
+    try {
+      await window.SoloiaConta.moverLaudo(s.dataset.mover, novo);
+      const l = dadosHist.laudos.find(x => x.id === s.dataset.mover);
+      if (l) l.pasta_id = novo;
+      renderHistorico();
+    } catch (e) { alert('Não foi possível mover o laudo.'); }
+  });
 
   // Selecao de amostras no cartao -> texto do botao "Gerar"
   lista.addEventListener('change', ev => {
