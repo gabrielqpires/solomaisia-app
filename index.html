@@ -301,6 +301,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .pasta-acoes button:hover{background:#1d3a6b}
   .la-mover{display:flex;align-items:center;gap:6px;font-size:14px;color:#a9b8d6}
   .la-mover select{background:#0b1730;border:1px solid #24406e;color:#dfeaff;border-radius:10px;padding:8px 10px;font:inherit;font-size:13.5px;max-width:220px}
+  /* Arrastar laudos para as pastas */
+  details.laudo-card[draggable="true"]{cursor:grab}
+  details.laudo-card.arrastando{opacity:.45}
+  .arrastando-laudo .pasta-tile,.arrastando-laudo .pastas-trilha button{outline:2px dashed #2a7fff;outline-offset:2px}
+  .pasta-tile.solta-aqui,.pastas-trilha button.solta-aqui{background:#16305f;border-color:#7fb0ff;transform:scale(1.03)}
+  .aviso-rapido{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;z-index:120;background:#0f2a1d;border:1px solid #1f5a3c;color:#dff5e8;padding:10px 16px;border-radius:999px;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.4);transition:opacity .2s,transform .2s;pointer-events:none}
+  .aviso-rapido.visivel{opacity:1;transform:translate(-50%,0)}
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
     .cf-acoes-multi button{width:100%}
@@ -1074,6 +1081,9 @@ window.SoloiaReabrirLaudo = async (id, escolhidas) => {
   if (l.cultura) cultureEl.value = l.cultura;
   const campoArquivo = fileEl.closest('.field');
   if (campoArquivo) campoArquivo.hidden = true;
+  // laudo ja lido ja esta numa pasta: o campo "Pasta" nao faz sentido aqui
+  const campoPasta = document.getElementById('campoPasta');
+  if (campoPasta) campoPasta.style.display = 'none';
   const av = document.getElementById('reusoAviso');
   av.hidden = false;
   av.innerHTML = `<div>📄 Usando o laudo já lido: <strong>${escapeHtml(l.arquivo || 'laudo.pdf')}</strong>
@@ -1084,6 +1094,7 @@ window.SoloiaReabrirLaudo = async (id, escolhidas) => {
     reuso = null;
     av.hidden = true;
     if (campoArquivo) campoArquivo.hidden = false;
+    if (campoPasta) campoPasta.style.display = '';
     startBtn.textContent = 'Ler laudo';
   });
   startBtn.textContent = 'Conferir valores';
@@ -1830,7 +1841,7 @@ async function iniciarConta() {
       ? (nFeitas ? '1 amostra · interpretada' : '1 amostra · não interpretada')
       : `${total} amostras · ${nFeitas} ${nFeitas === 1 ? 'interpretada' : 'interpretadas'}`;
     const pendentes = total - nFeitas;
-    return `<details class="laudo-card" data-laudo="${escapeHtml(l.id)}">
+    return `<details class="laudo-card" draggable="true" data-laudo="${escapeHtml(l.id)}" title="Arraste para uma pasta para organizar">
       <summary class="laudo-topo">
         <button type="button" class="laudo-mini" data-pdf="${escapeHtml(l.pdf_path)}" data-mini="${escapeHtml(l.pdf_path)}" title="Abrir o PDF">
           <canvas></canvas><span class="laudo-mini-txt">PDF</span></button>
@@ -1935,7 +1946,7 @@ async function iniciarConta() {
     const vazio = !subs.length && !laudos.length;
     lista.innerHTML = `
       <div class="pastas-cab">
-        <nav class="pastas-trilha" aria-label="Pastas">${!pastaAtual ? '<span class="muted">Organize por cliente, fazenda ou safra</span>' : trilha.map((p, i) => i < trilha.length - 1
+        <nav class="pastas-trilha" aria-label="Pastas">${!pastaAtual ? `<span class="muted">${subs.length ? 'Arraste um laudo para uma pasta para organizar' : 'Crie pastas para organizar por cliente, fazenda ou safra'}</span>` : trilha.map((p, i) => i < trilha.length - 1
           ? `<button type="button" data-ir-pasta="${escapeHtml(p.id)}">${escapeHtml(p.nome)}</button><span class="pastas-sep">›</span>`
           : `<strong>${escapeHtml(p.nome)}</strong>`).join('')}</nav>
         <button type="button" class="botao-sec" id="btnNovaPasta">+ Nova pasta</button>
@@ -2051,6 +2062,59 @@ async function iniciarConta() {
       const l = dadosHist.laudos.find(x => x.id === s.dataset.mover);
       if (l) l.pasta_id = novo;
       renderHistorico();
+    } catch (e) { alert('Não foi possível mover o laudo.'); }
+  });
+
+
+  // Arrastar e soltar: laudo -> pasta (tile) ou -> um nivel da trilha ("Minhas análises" = Sem pasta)
+  const TIPO_LAUDO = 'text/x-soloia-laudo';
+  const alvoSoltar = ev => ev.target.closest?.('[data-abrir-pasta],[data-ir-pasta]');
+  function avisoRapido(txt) {
+    let a = document.getElementById('avisoRapido');
+    if (!a) { a = document.createElement('div'); a.id = 'avisoRapido'; a.className = 'aviso-rapido'; a.setAttribute('role', 'status'); document.body.appendChild(a); }
+    a.textContent = txt;
+    a.classList.add('visivel');
+    clearTimeout(a._t);
+    a._t = setTimeout(() => a.classList.remove('visivel'), 2200);
+  }
+  lista.addEventListener('dragstart', ev => {
+    const card = ev.target.closest?.('.laudo-card');
+    if (!card) return;
+    ev.dataTransfer.setData(TIPO_LAUDO, card.dataset.laudo);
+    ev.dataTransfer.effectAllowed = 'move';
+    card.classList.add('arrastando');
+    lista.classList.add('arrastando-laudo');
+  });
+  lista.addEventListener('dragend', () => {
+    lista.classList.remove('arrastando-laudo');
+    lista.querySelectorAll('.arrastando,.solta-aqui').forEach(e => e.classList.remove('arrastando', 'solta-aqui'));
+  });
+  lista.addEventListener('dragover', ev => {
+    const a = alvoSoltar(ev);
+    if (!a || ![...ev.dataTransfer.types].includes(TIPO_LAUDO)) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = 'move';
+    a.classList.add('solta-aqui');
+  });
+  lista.addEventListener('dragleave', ev => {
+    const a = alvoSoltar(ev);
+    if (a && !a.contains(ev.relatedTarget)) a.classList.remove('solta-aqui');
+  });
+  lista.addEventListener('drop', async ev => {
+    const a = alvoSoltar(ev);
+    if (!a) return;
+    ev.preventDefault();
+    a.classList.remove('solta-aqui');
+    const id = ev.dataTransfer.getData(TIPO_LAUDO);
+    if (!id) return;
+    const destino = a.dataset.abrirPasta || a.dataset.irPasta || null;
+    const l = dadosHist.laudos.find(x => x.id === id);
+    if (!l || (l.pasta_id || null) === destino) return;
+    try {
+      await window.SoloiaConta.moverLaudo(id, destino);
+      l.pasta_id = destino;
+      renderHistorico();
+      avisoRapido(`Movido para ${destino ? (dadosHist.pastas.find(p => p.id === destino)?.nome || 'a pasta') : 'Sem pasta'}`);
     } catch (e) { alert('Não foi possível mover o laudo.'); }
   });
 
