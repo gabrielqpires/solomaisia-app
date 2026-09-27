@@ -219,6 +219,39 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .la-acao{width:100%;justify-content:flex-start;padding-left:32px}
     .la-apagar{margin-left:0}
   }
+  /* Cartao do laudo: miniatura + tabela das amostras */
+  .laudo-topo{display:flex;gap:14px;align-items:flex-start}
+  .laudo-mini{flex:none;width:96px;height:128px;padding:0;border-radius:8px;overflow:hidden;background:#fff;border:1px solid #24406e;box-shadow:0 6px 18px rgba(0,0,0,.35);position:relative;cursor:pointer}
+  .laudo-mini canvas{width:100%;height:100%;object-fit:cover;object-position:top;display:block;opacity:0;transition:opacity .2s}
+  .laudo-mini.pronta canvas{opacity:1}
+  .laudo-mini-txt{position:absolute;inset:0;display:grid;place-items:center;color:#94a3b8;font-weight:700;font-size:15px}
+  .laudo-mini.pronta .laudo-mini-txt{display:none}
+  .laudo-mini:hover{border-color:#2a7fff}
+  .laudo-tit .laudo-status{display:inline-block;margin-top:8px}
+  .laudo-tabela-wrap{margin:14px 0 12px;overflow-x:auto;border:1px solid #1f3152;border-radius:12px}
+  .laudo-tabela{width:100%;border-collapse:collapse;font-size:13.5px;white-space:nowrap}
+  .laudo-tabela th{background:#0f1a31;color:#a9b8d6;font-weight:600;text-align:left;padding:8px 10px;border-bottom:1px solid #1f3152}
+  .laudo-tabela th small{display:block;font-weight:400;font-size:11px;color:#7f93b5}
+  .laudo-tabela td{padding:8px 10px;border-top:1px solid #16223a;color:#e9efff}
+  .laudo-tabela tr.selecionada td{background:#10224a}
+  .lt-sel{width:34px;text-align:center}
+  .lt-sel input{width:17px;height:17px;margin:0;cursor:pointer}
+  .lt-amostra{display:flex;align-items:center;gap:8px;min-width:180px;max-width:260px}
+  .lt-rot{overflow:hidden;text-overflow:ellipsis}
+  .laudo-tabela tr.feita .la-n{background:#1f5a3c;color:#fff}
+  .lt-status{min-width:170px}
+  .lt-ok{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#1f5a3c;color:#fff;font-weight:700;margin-right:6px}
+  .lt-status .la-abrir{margin:2px 4px 2px 0}
+  .lt-nao{color:#7f93b5}
+  .la-gerar:disabled{opacity:.55;cursor:not-allowed}
+  .lt-ico{display:none}
+  @media (max-width:600px){
+    .laudo-mini{width:72px;height:96px}
+    .lt-amostra{flex-wrap:wrap;min-width:190px;white-space:normal}
+    .lt-ico{display:block;width:100%;padding-left:30px;font-size:12px}
+    .lt-ico.sim{color:#9fe0b8}
+    .lt-ico.nao{color:#7f93b5}
+  }
   .relatorio-amostra{display:inline-block;margin:0 0 10px;padding:5px 12px;border-radius:999px;background:#16305f;border:1px solid #2a4f8f;color:#dfeaff;font-size:13.5px;font-weight:600}
   @media (max-width:600px){
     .cf-acoes-multi button{width:100%}
@@ -956,14 +989,15 @@ function abrirConfirmacao({ f, culturaId, culture, dados, laudoId, marcadas, fei
 }
 
 // Minhas analises -> "Gerar as que faltam": volta ao formulario com o laudo ja lido (sem LlamaParse de novo)
-window.SoloiaReabrirLaudo = async (id) => {
+window.SoloiaReabrirLaudo = async (id, escolhidas) => {
   const l = await window.SoloiaConta.lerLaudo(id);
   if (!l?.leitura?.amostras?.length) throw new Error('Leitura do laudo não encontrada.');
   if (!l.pdf_path) throw new Error('O PDF deste laudo não foi guardado.');
   const file = await window.SoloiaConta.baixarPdf(l.pdf_path, l.arquivo || 'laudo.pdf');
   const feitas = [...new Set((l.interpretacoes || []).map(x => x.amostra_indice).filter(Number.isInteger))];
   const pendentes = l.leitura.amostras.map((_, i) => i).filter(i => !feitas.includes(i));
-  reuso = { f: file, dados: l.leitura, laudoId: l.id, feitas, marcadas: pendentes.length ? pendentes : [0] };
+  const marcadas = escolhidas && escolhidas.length ? escolhidas : (pendentes.length ? pendentes : [0]);
+  reuso = { f: file, dados: l.leitura, laudoId: l.id, feitas, marcadas };
   if (heroEl) heroEl.style.display = '';
   if (chatEl) chatEl.style.display = 'none';
   confEl.hidden = true;
@@ -1556,10 +1590,13 @@ async function iniciarConta() {
     try { window.scrollTo({ top: 0 }); } catch (_) {}
   }
   function fecharHistorico() { mostrarVista(null); }
-  // Minhas analises: um cartao por laudo (PDF), com as amostras geradas e as que faltam
+  // Minhas analises: um cartao por laudo (PDF) com miniatura, tabela das amostras e escolha do que gerar
+  const num = x => (typeof x === 'number' ? x.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—');
+  const CUSTO = 16;
   function cartaoLaudo(l) {
     const rotulos = Array.isArray(l.rotulos) && l.rotulos.length ? l.rotulos : ['Amostra'];
     const total = l.total_amostras || rotulos.length;
+    const valores = Array.isArray(l.valores) ? l.valores : [];
     const porAmostra = new Map();
     for (const x of l.interpretacoes || []) {
       const i = Number.isInteger(x.amostra_indice) ? x.amostra_indice : 0;
@@ -1567,35 +1604,63 @@ async function iniciarConta() {
       porAmostra.get(i).push(x);
     }
     const nFeitas = [...porAmostra.keys()].filter(i => i < total).length;
-    const pendentes = total - nFeitas;
-    const amostras = rotulos.map((r, i) => {
+    const linhas = rotulos.map((r, i) => {
       const its = (porAmostra.get(i) || []).sort((a, b) => String(b.criado_em).localeCompare(String(a.criado_em)));
-      return `<div class="la-linha${its.length ? ' feita' : ''}">
-        <span class="la-n">${i + 1}</span><span class="la-txt">${escapeHtml(r)}</span>
-        <span class="la-acao">${its.length
-          ? its.map(x => `<button type="button" class="la-abrir" data-interp="${Number(x.id)}">${escapeHtml(x.cultura || 'Abrir')} · ${fmt(x.criado_em)}</button>`).join('')
-          : '<span class="la-pend">não gerada</span>'}</span>
-      </div>`;
+      const v = valores[i] || {};
+      return `<tr class="${its.length ? 'feita' : ''}">
+        <td class="lt-sel"><input type="checkbox" data-sel="${i}" aria-label="Selecionar amostra ${i + 1}"></td>
+        <td class="lt-amostra"><span class="la-n">${i + 1}</span><span class="lt-rot" title="${escapeHtml(r)}">${escapeHtml(r)}</span><span class="lt-ico ${its.length ? 'sim' : 'nao'}">${its.length ? '✓ interpretada' : '○ não interpretada'}</span></td>
+        <td>${num(v.ph)}</td><td>${num(v.smp)}</td><td>${num(v.p)}</td><td>${num(v.k)}</td>
+        <td>${num(v.mo)}</td><td>${num(v.argila)}</td><td>${num(v.ctc)}</td><td>${num(v.v)}</td>
+        <td class="lt-status">${its.length
+          ? `<span class="lt-ok" title="Interpretada">✓</span>` + its.map(x => `<button type="button" class="la-abrir" data-interp="${Number(x.id)}">${escapeHtml(x.cultura || 'Abrir')} · ${fmt(x.criado_em)}</button>`).join('')
+          : '<span class="lt-nao">○ Não interpretada</span>'}</td>
+      </tr>`;
     }).join('');
     const status = total === 1
-      ? (nFeitas ? '1 amostra · gerada' : '1 amostra · não gerada')
-      : `${total} amostras · ${nFeitas} ${nFeitas === 1 ? 'gerada' : 'geradas'}`;
-    return `<article class="laudo-card">
-      <div class="laudo-cab">
+      ? (nFeitas ? '1 amostra · interpretada' : '1 amostra · não interpretada')
+      : `${total} amostras · ${nFeitas} ${nFeitas === 1 ? 'interpretada' : 'interpretadas'}`;
+    return `<article class="laudo-card" data-laudo="${escapeHtml(l.id)}">
+      <div class="laudo-topo">
+        <button type="button" class="laudo-mini" data-pdf="${escapeHtml(l.pdf_path)}" data-mini="${escapeHtml(l.pdf_path)}" title="Ver PDF">
+          <canvas></canvas><span class="laudo-mini-txt">PDF</span></button>
         <div class="laudo-tit">
-          <div class="laudo-nome">📄 ${escapeHtml(l.arquivo || 'laudo.pdf')}</div>
+          <div class="laudo-nome">${escapeHtml(l.arquivo || 'laudo.pdf')}</div>
           <div class="laudo-info">${escapeHtml([l.laboratorio, l.localizacao].filter(Boolean).join(' · '))}${l.laboratorio || l.localizacao ? ' · ' : ''}${fmt(l.criado_em)}</div>
+          <span class="laudo-status${nFeitas < total ? ' pendente' : ''}">${status}</span>
         </div>
-        <span class="laudo-status${pendentes > 0 ? ' pendente' : ''}">${status}</span>
       </div>
-      <div class="laudo-amostras">${amostras}</div>
+      <div class="laudo-tabela-wrap">
+        <table class="laudo-tabela">
+          <thead><tr><th class="lt-sel"></th><th>Amostra</th><th>pH</th><th>SMP</th><th>P<small>mg/dm³</small></th><th>K<small>mg/dm³</small></th>
+            <th>M.O.<small>%</small></th><th>Argila<small>%</small></th><th>CTC<small>pH 7</small></th><th>V<small>%</small></th><th>Interpretação</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>
       <div class="laudo-acoes">
-        ${l.pdf_path && pendentes > 0 ? `<button type="button" class="la-gerar" data-reabrir="${escapeHtml(l.id)}">Gerar ${pendentes === 1 ? 'a amostra que falta' : 'as ' + pendentes + ' que faltam'}</button>` : ''}
-        ${l.pdf_path && pendentes === 0 ? `<button type="button" class="botao-sec" data-reabrir="${escapeHtml(l.id)}">Gerar de novo</button>` : ''}
-        ${l.pdf_path ? `<button type="button" class="botao-sec" data-pdf="${escapeHtml(l.pdf_path)}">Ver PDF</button>` : ''}
+        <button type="button" class="la-gerar" data-gerar="${escapeHtml(l.id)}" disabled>Selecione as amostras para gerar</button>
+        <button type="button" class="botao-sec" data-pdf="${escapeHtml(l.pdf_path)}">Ver PDF</button>
         <button type="button" class="botao-link la-apagar" data-apagar="${escapeHtml(l.id)}" data-path="${escapeHtml(l.pdf_path || '')}">Apagar laudo</button>
       </div>
     </article>`;
+  }
+
+  // Miniatura: primeira pagina do PDF (pdf.js ja carregado na pagina)
+  async function desenharMiniaturas() {
+    for (const b of lista.querySelectorAll('[data-mini]')) {
+      try {
+        if (!window.pdfjsLib) return;
+        const blob = await window.SoloiaConta.pdfBlob(b.dataset.mini);
+        const pdf = await window.pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
+        const pag = await pdf.getPage(1);
+        const base = pag.getViewport({ scale: 1 });
+        const vp = pag.getViewport({ scale: (96 * 2) / base.width });
+        const cv = b.querySelector('canvas');
+        cv.width = vp.width; cv.height = vp.height;
+        await pag.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+        b.classList.add('pronta');
+      } catch (e) { /* fica o icone "PDF" */ }
+    }
   }
 
   async function abrirLista() {
@@ -1604,14 +1669,10 @@ async function iniciarConta() {
     lista.hidden = false;
     lista.innerHTML = '<p class="muted">Carregando…</p>';
     try {
-      const { laudos, soltas } = await window.SoloiaConta.listarLaudos();
-      if (!laudos.length && !soltas.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhuma análise ainda.</p><p class="muted">Os laudos que você enviar e as interpretações geradas aparecem aqui.</p></div>'; return; }
-      lista.innerHTML = laudos.map(cartaoLaudo).join('')
-        + (soltas.length ? `<h3 class="historico-sub">Outras análises</h3>` + soltas.map(i => `<button type="button" class="historico-item" data-interp="${Number(i.id)}">
-          <span class="h-cultura">${escapeHtml(i.cultura || 'Análise')}</span>
-          <span class="h-detalhe">${escapeHtml([i.amostra ? 'Amostra ' + i.amostra : '', i.arquivo || ''].filter(Boolean).join(' · '))}</span>
-          <span class="h-data">${fmt(i.criado_em)}</span>
-        </button>`).join('') : '');
+      const { laudos } = await window.SoloiaConta.listarLaudos();
+      if (!laudos.length) { lista.innerHTML = '<div class="historico-vazio"><p>Nenhum laudo ainda.</p><p class="muted">Os laudos que você enviar aparecem aqui, com o PDF e as interpretações de cada amostra.</p></div>'; return; }
+      lista.innerHTML = laudos.map(cartaoLaudo).join('');
+      desenharMiniaturas();
     } catch (e) {
       lista.innerHTML = '<p class="muted">Não foi possível carregar suas análises. Tente de novo.</p>';
     }
@@ -1633,28 +1694,43 @@ async function iniciarConta() {
     }
   }
 
+  // Selecao de amostras no cartao -> texto do botao "Gerar"
+  lista.addEventListener('change', ev => {
+    const cb = ev.target.closest('[data-sel]');
+    if (!cb) return;
+    const card = cb.closest('.laudo-card');
+    cb.closest('tr').classList.toggle('selecionada', cb.checked);
+    const n = card.querySelectorAll('[data-sel]:checked').length;
+    const b = card.querySelector('[data-gerar]');
+    b.disabled = !n;
+    b.textContent = n ? `Gerar ${n} ${n === 1 ? 'amostra' : 'amostras'} (${n * CUSTO} créditos)` : 'Selecione as amostras para gerar';
+  });
+
   lista.addEventListener('click', async ev => {
-    const alvo = ev.target.closest('[data-interp],[data-pdf],[data-reabrir],[data-apagar]');
+    const alvo = ev.target.closest('[data-interp],[data-pdf],[data-gerar],[data-apagar]');
     if (!alvo) return;
     if (alvo.dataset.interp) { abrirInterpretacao(alvo.dataset.interp); return; }
     if (alvo.dataset.pdf) {
-      // abre a aba ja no clique (senao o navegador bloqueia) e depois coloca o link temporario
+      // abre a aba ja no clique (senao o navegador bloqueia) e depois coloca o PDF (endereco local, sem link do Supabase)
       const aba = window.open('', '_blank');
       try {
-        const url = await window.SoloiaConta.linkPdf(alvo.dataset.pdf);
+        const url = await window.SoloiaConta.enderecoPdf(alvo.dataset.pdf);
         if (aba && !aba.closed) aba.location.href = url; else location.href = url;
       } catch (e) { try { aba && aba.close(); } catch (_) {} alert('Não foi possível abrir o PDF.'); }
       return;
     }
-    if (alvo.dataset.reabrir) {
+    if (alvo.dataset.gerar) {
+      const card = alvo.closest('.laudo-card');
+      const marcadas = [...card.querySelectorAll('[data-sel]:checked')].map(c => Number(c.dataset.sel));
+      if (!marcadas.length) return;
       alvo.disabled = true;
       alvo.textContent = 'Abrindo…';
-      try { mostrarVista(null); await window.SoloiaReabrirLaudo(alvo.dataset.reabrir); }
+      try { mostrarVista(null); await window.SoloiaReabrirLaudo(alvo.dataset.gerar, marcadas); }
       catch (e) { mostrarVista('historico'); alert(e.message || 'Não foi possível abrir o laudo.'); abrirLista(); }
       return;
     }
     if (alvo.dataset.apagar) {
-      if (!confirm('Apagar este laudo e o PDF? As interpretações já geradas continuam em "Outras análises".')) return;
+      if (!confirm('Apagar este laudo, o PDF e as interpretações dele?')) return;
       try { await window.SoloiaConta.apagarLaudo(alvo.dataset.apagar, alvo.dataset.path || null); } catch (e) { alert('Não foi possível apagar.'); }
       abrirLista();
     }

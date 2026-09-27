@@ -160,26 +160,28 @@
         if (up.error) console.error('[Solo+IA] guardar PDF:', up.error); else pdfPath = caminho;
       }
       const rotulos = (dados.amostras || []).map(a => `${a.laudo?.amostra || ''}${a.laudo?.identificacao ? ' — ' + a.laudo.identificacao : ''}`);
+      // resumo para a tabela de Minhas analises
+      const v = (a, k) => a.laudo?.campos?.[k]?.valor ?? null;
+      const valores = (dados.amostras || []).map(a => ({ ph: v(a, 'phAgua'), smp: v(a, 'indiceSmp'), p: v(a, 'fosforoMgDm3'), k: v(a, 'potassioMgDm3'),
+        mo: v(a, 'materiaOrganicaPercentual'), argila: v(a, 'argilaPercentual'), ctc: v(a, 'ctcPh7CmolcDm3'), v: v(a, 'saturacaoBasesPercentual') }));
       const { data, error } = await cliente.from('laudos').insert({
         arquivo: file?.name || null, laboratorio: dados.laboratorio || null, localizacao: dados.localizacao || null, cultura: cultura || null,
-        total_amostras: rotulos.length || 1, rotulos, leitura: dados, pdf_path: pdfPath,
+        total_amostras: rotulos.length || 1, rotulos, valores, leitura: dados, pdf_path: pdfPath,
       }).select('id').single();
       if (error) { console.error('[Solo+IA] guardar laudo:', error); return null; }
       return data.id;
     } catch (e) { console.error('[Solo+IA] guardar laudo:', e); return null; }
   }
 
-  // Minhas analises: laudos (com as interpretacoes de cada um) + interpretacoes antigas sem laudo
+  // Minhas analises: so laudos com o PDF guardado (com as interpretacoes de cada um)
   async function listarLaudos() {
     const c = await cli();
-    const [l, soltas] = await Promise.all([
-      c.from('laudos').select('id, criado_em, arquivo, laboratorio, localizacao, cultura, total_amostras, rotulos, pdf_path, interpretacoes(id, criado_em, cultura, amostra, amostra_indice)')
-        .order('criado_em', { ascending: false }).limit(100),
-      c.from('interpretacoes').select('id, criado_em, cultura, arquivo, amostra').is('laudo_id', null).order('criado_em', { ascending: false }).limit(100),
-    ]);
-    if (l.error) throw l.error;
-    if (soltas.error) throw soltas.error;
-    return { laudos: l.data || [], soltas: soltas.data || [] };
+    const { data, error } = await c.from('laudos')
+      .select('id, criado_em, arquivo, laboratorio, localizacao, cultura, total_amostras, rotulos, valores, pdf_path, interpretacoes(id, criado_em, cultura, amostra, amostra_indice)')
+      .not('pdf_path', 'is', null)
+      .order('criado_em', { ascending: false }).limit(100);
+    if (error) throw error;
+    return { laudos: data || [] };
   }
 
   async function lerLaudo(id) {
@@ -197,16 +199,32 @@
     return data.signedUrl;
   }
 
+  // PDF baixado pela sessao do usuario (sem link do Supabase na tela); guardado em memoria para a miniatura
+  const pdfs = new Map();
+  async function pdfBlob(caminho) {
+    if (!pdfs.has(caminho)) {
+      pdfs.set(caminho, (async () => {
+        const c = await cli();
+        const { data, error } = await c.storage.from('laudos').download(caminho);
+        if (error) throw error;
+        return data;
+      })().catch(e => { pdfs.delete(caminho); throw e; }));
+    }
+    return pdfs.get(caminho);
+  }
   async function baixarPdf(caminho, nome) {
-    const c = await cli();
-    const { data, error } = await c.storage.from('laudos').download(caminho);
-    if (error) throw error;
-    return new File([data], nome || 'laudo.pdf', { type: 'application/pdf' });
+    return new File([await pdfBlob(caminho)], nome || 'laudo.pdf', { type: 'application/pdf' });
+  }
+  // endereco local (blob:https://www.solomaisia.com.br/...) para abrir o PDF numa aba
+  async function enderecoPdf(caminho) {
+    return URL.createObjectURL(new Blob([await pdfBlob(caminho)], { type: 'application/pdf' }));
   }
 
-  // apaga o PDF e o laudo; as interpretacoes ficam (em "Outras analises")
+  // apaga o PDF, as interpretacoes do laudo e o laudo
   async function apagarLaudo(id, caminho) {
     const c = await cli();
+    const r0 = await c.from('interpretacoes').delete().eq('laudo_id', id);
+    if (r0.error) throw r0.error;
     if (caminho) { const r = await c.storage.from('laudos').remove([caminho]); if (r.error) throw r.error; }
     const { error } = await c.from('laudos').delete().eq('id', id);
     if (error) throw error;
@@ -259,5 +277,5 @@
   }
 
   window.SoloiaConta = { sessao, entrar, entrarEmail, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
-    guardarLaudo, listarLaudos, lerLaudo, linkPdf, baixarPdf, apagarLaudo };
+    guardarLaudo, listarLaudos, lerLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
 })();
