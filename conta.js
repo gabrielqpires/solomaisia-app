@@ -58,6 +58,8 @@
       const d = await resp.json().catch(() => ({}));
       if (!resp.ok || !d.ok || !d.upload?.sig) return { ...DESLOGADO, email: s.user?.email || null };
       const meta = s.user?.user_metadata || {};
+      // conta nova (primeira sessao): conversao de cadastro para o Google Ads/GA4
+      if (d.novo) { try { (window.dataLayer = window.dataLayer || []).push({ event: 'cadastro_concluido', source: 'soloia_iframe', metodo: s.user?.app_metadata?.provider || 'email' }); } catch (_) {} }
       const auth = { isLogged: true, memberId: d.memberId, email: d.email, creditos: Number(d.creditos) || 0, upload: d.upload,
         nome: meta.full_name || meta.name || null, foto: meta.avatar_url || meta.picture || null };
       cache = { token: s.access_token, auth };

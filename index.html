@@ -20,6 +20,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   <script>
     // Dentro do iframe do Wix a auth vem por postMessage; aberto direto (site proprio), vem do Supabase (conta.js)
     window.SOLOIA_EMBUTIDO = (function () { try { return window.self !== window.top; } catch (_) { return true; } })();
+    // Eventos para o Google Tag Manager. No Wix, a pagina do Wix repassava os eventos do iframe ao dataLayer;
+    // no site proprio a pagina e a de cima, entao repassa aqui mesmo, no mesmo formato (os gatilhos do GTM continuam valendo).
+    window.dataLayer = window.dataLayer || [];
+    if (!window.SOLOIA_EMBUTIDO) {
+      window.addEventListener('message', function (ev) {
+        var m = ev.data || {};
+        if (ev.source !== window || m.type !== 'soloia:trackEvent') return;
+        window.dataLayer.push(Object.assign({ event: m.eventName || 'soloia_event', source: 'soloia_iframe', site: 'solomaisia.com.br' }, m.eventData || {}));
+      });
+    }
   </script>
   <script src="conta.js"></script>
   <script type="module" src="confirmacao.js"></script>
@@ -2257,6 +2267,15 @@ async function iniciarConta() {
 
   // --- Comprar creditos
   const PENDENTE = 'soloia:pagamentoPendente';
+  const PRECOS = { p50: 14.99, p150: 24.99, p300: 49.99 };
+  let compraRegistrada = null;
+  // conversao para o Google Ads/GA4 (uma vez por pagamento)
+  function registrarCompra(pacote, ref) {
+    const chave = ref || pacote || 'compra';
+    if (compraRegistrada === chave) return;
+    compraRegistrada = chave;
+    try { window.dataLayer.push({ event: 'compra_aprovada', source: 'soloia_iframe', pacote: pacote || null, value: PRECOS[pacote] || null, currency: 'BRL', transaction_id: ref || undefined }); } catch (_) {}
+  }
   const saldoEl = document.getElementById('comprarSaldo');
   const pacotes = [...comprar.querySelectorAll('.pacote')];
   const btnComprar = document.getElementById('btnComprar');
@@ -2296,6 +2315,9 @@ async function iniciarConta() {
       if (meu !== ciclo) return false;
       const a = await atualizarSaldo(true);
       if (a.isLogged && Number(a.creditos) > Number(saldoAntes)) {
+        let pend = null;
+        try { pend = JSON.parse(localStorage.getItem(PENDENTE) || 'null'); } catch (_) {}
+        registrarCompra(pend?.packageId || escolhido?.dataset.pacote, pend?.externalRef);
         status(`Pagamento aprovado! Seu saldo agora é ${Number(a.creditos).toLocaleString('pt-BR')} créditos.`, 'ok');
         try { localStorage.removeItem(PENDENTE); } catch (_) {}
         return true;
@@ -2329,7 +2351,7 @@ async function iniciarConta() {
         // conexao com o n8n caiu sem resposta: segue so pelo saldo
         if (r === '') r = (await acompanhando) ? 'approved' : 'fim';
         ciclo++;
-        if (r === 'approved') { await atualizarSaldo(true); status(`Pagamento aprovado! Seu saldo agora é ${Number(window.currentCreditos || 0).toLocaleString('pt-BR')} créditos.`, 'ok'); try { localStorage.removeItem(PENDENTE); } catch (_) {} }
+        if (r === 'approved') { registrarCompra(pg.packageId, pg.externalRef); await atualizarSaldo(true); status(`Pagamento aprovado! Seu saldo agora é ${Number(window.currentCreditos || 0).toLocaleString('pt-BR')} créditos.`, 'ok'); try { localStorage.removeItem(PENDENTE); } catch (_) {} }
         else if (r === 'rejected') { status('O pagamento não foi aprovado. Você pode tentar de novo.', 'erro'); try { localStorage.removeItem(PENDENTE); } catch (_) {} }
       } else {
         // pop-up bloqueado: vai para o checkout nesta aba e volta para ?creditos=1&payment=...
