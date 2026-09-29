@@ -109,7 +109,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .barril-txt b{color:#ffc2c8}
 
   @media print{
-    body{background:#fff;color:#000}
+    html,body{background:#fff !important;color:#000}
     header,.etapas,.abas,.relatorio-acoes,.msg.me,#creditos-container,.site-footer{display:none !important}
     .chat{background:none;padding:0}
     .msg{box-shadow:none;border:0;background:none;max-width:100%}
@@ -119,6 +119,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .chip{border:1px solid #999 !important;background:#fff !important;color:#000 !important}
     .barril{background:#fff !important;border-color:#999 !important;break-inside:avoid}
     .barril-txt,.barril-txt b,.barril-tit,.barril-leg{color:#000 !important}
+    .barril-svg svg{max-width:400px !important}
+    .barril .bv{fill:#333 !important}
+    .barril-dica{display:none !important}
+    /* "Imprimir / salvar PDF": so o relatorio clicado (caminho ate ele marcado em imprimirRelatorio) */
+    body.imprimir-um > :not(.print-caminho),
+    body.imprimir-um .print-caminho > :not(.print-caminho):not(.print-alvo){display:none !important}
+    body.imprimir-um .print-caminho{display:block !important;background:#fff !important;border:0 !important;box-shadow:none !important;padding:0 !important;margin:0 !important;min-height:0 !important;max-width:none !important;width:auto !important}
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:#e9efff;font-family:'Segoe UI',system-ui,Arial}
@@ -1616,7 +1623,7 @@ function barrilLiebig(el) {
     const [bx, by] = P((TH[i] + TH[i + 1]) / 2, yB), lim = lis.includes(i);
     s += `<circle cx="${bx}" cy="${by + 28}" r="13" fill="${COR[x.cls]}" stroke="${lim ? '#F09595' : '#0c1a33'}" stroke-width="${lim ? 2.5 : 1.5}"/>`
       + `<text x="${bx}" y="${by + 32}" text-anchor="middle" font-size="${x.sim.length > 1 ? 11 : 12}" font-weight="600" fill="${x.cls === 'medio' ? '#412402' : '#FFFFFF'}">${x.sim}</text>`
-      + `<text x="${bx}" y="${by + 56}" text-anchor="middle" font-size="12" fill="#b8cbe6">${esc(x.valor)}</text>`;
+      + `<text class="bv" x="${bx}" y="${by + 56}" text-anchor="middle" font-size="12" fill="#b8cbe6">${esc(x.valor)}</text>`;
   });
 
   const nomes = lis.map(i => `<b>${esc(t[i].nome)}</b>`);
@@ -2554,7 +2561,7 @@ function acoesRelatorio(el, cultura) {
     // fora do IIFE: trackEvent nao existe aqui
     try { window.parent.postMessage({ type: 'soloia:trackEvent', eventName: 'relatorio_' + acao, eventData: { cultura } }, '*'); } catch (_) {}
     if (acao === 'nova') { location.reload(); return; }
-    if (acao === 'imprimir') { window.print(); return; }
+    if (acao === 'imprimir') { imprimirRelatorio(el.querySelector('.report')); return; }
     const texto = [...el.querySelectorAll('.painel')].map(p => p.innerText.trim()).join('\n\n');
     const botao = ev.target;
     // dentro do iframe do Wix a API pode ficar pendente sem rejeitar: limite de tempo e cai no execCommand
@@ -2568,6 +2575,31 @@ function acoesRelatorio(el, cultura) {
     botao.textContent = 'Copiado ✓';
     setTimeout(() => { botao.textContent = 'Copiar'; }, 2000);
   });
+}
+
+// Marca o caminho ate o relatorio para o CSS de impressao esconder o resto da pagina; devolve a limpeza
+function marcarImpressao(alvo) {
+  const cam = [];
+  for (let n = alvo.parentElement; n && n !== document.body; n = n.parentElement) cam.push(n);
+  const fechados = cam.filter(n => n.tagName === 'DETAILS' && !n.open);
+  fechados.forEach(d => { d.open = true; });
+  alvo.classList.add('print-alvo');
+  cam.forEach(n => n.classList.add('print-caminho'));
+  document.body.classList.add('imprimir-um');
+  return () => {
+    document.body.classList.remove('imprimir-um');
+    alvo.classList.remove('print-alvo');
+    cam.forEach(n => n.classList.remove('print-caminho'));
+    fechados.forEach(d => { d.open = false; });
+  };
+}
+
+function imprimirRelatorio(alvo) {
+  if (!alvo) { window.print(); return; }
+  const limpar = marcarImpressao(alvo);
+  const depois = () => { window.removeEventListener('afterprint', depois); limpar(); };
+  window.addEventListener('afterprint', depois);
+  window.print();
 }
 
 function colorirClasses(el) {
