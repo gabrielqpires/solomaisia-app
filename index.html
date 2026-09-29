@@ -410,6 +410,45 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .login-icone{border-radius:50%}
   .login-fechar{position:absolute;top:10px;right:10px;width:34px;height:34px;padding:0;border-radius:50%;background:transparent;box-shadow:none;color:#a9b8d6;font-size:22px;line-height:1}
   .login-fechar:hover{background:#16223d;color:#fff}
+  /* Apresentacao para quem nao esta logado (3 telas, dentro da pagina) */
+  .tour-caixa{position:relative;margin:auto;width:min(560px,100%);background:#0f172a;border:1px solid #24324a;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.55);padding:26px 24px 18px;color:#e9efff;text-align:left}
+  .tour-caixa h2{margin:10px 0 8px;font-size:23px;color:#fff;line-height:1.25}
+  .tour-selo{display:inline-block;background:#123626;color:#a8ecc1;border:1px solid #1f5a3c;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700}
+  .tour-sub{margin:0 0 14px;color:#b8cbe6;font-size:15px;line-height:1.5}
+  .tour-lista{list-style:none;padding:0;margin:0 0 14px;display:grid;gap:9px}
+  .tour-lista li{display:flex;gap:10px;font-size:15px;line-height:1.4}
+  .tour-lista b{color:#7cc35b}
+  .tour-nota{font-size:13px;color:#9bb4d6;margin:10px 0 0}
+  .tour-cta{width:100%;padding:13px;font-size:16px;margin-top:4px}
+  .tour-entrar{display:block;margin:10px auto 0}
+  .tour-passos{list-style:none;padding:0;margin:0;display:grid;gap:14px}
+  .tour-passos li{display:flex;gap:12px;align-items:flex-start}
+  .tour-passos li > div{flex:1;min-width:0}
+  .tour-n{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#2a7fff;color:#fff;font-weight:700;font-size:14px}
+  .tour-passos strong{display:block;font-size:15.5px;color:#fff}
+  .tour-passos p{margin:2px 0 8px;font-size:14px;color:#b8cbe6;line-height:1.45}
+  .tour-mock{background:#0b1226;border:1px dashed #2a3d63;border-radius:10px;padding:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px}
+  .tour-mock .chip{font-size:12px;padding:4px 10px}
+  .mk-arquivo{background:#16223d;border-radius:8px;padding:6px 10px}
+  .mk-sel{border:1px solid #2a3d63;border-radius:8px;padding:6px 10px;color:#b8cbe6}
+  .mk-tab{border-collapse:collapse;width:100%;font-size:13px}
+  .mk-tab td{padding:4px 6px;border-bottom:1px solid #1f3152}
+  .mk-tab td:last-child{text-align:right;font-weight:700}
+  .mk-tab .ok{color:#7cc35b}.mk-tab .c-mb,.mk-tab .c-b{color:#ff9d9d}.mk-tab .c-m{color:#f6d57a}.mk-tab .c-a{color:#9fe0b8}
+  .tour-barril svg{width:100%;max-width:340px;height:auto;display:block;margin:0 auto}
+  .tour-lim{font-size:14px;margin:4px 0 10px}
+  .tour-lim b{color:#ffc2c8}
+  .tour-recs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+  .tour-recs div{background:#0c1a33;border:1px solid #1f3152;border-radius:10px;padding:10px}
+  .tour-recs span{display:block;font-size:12px;color:#9bb4d6}
+  .tour-recs strong{display:block;font-size:17px;color:#fff;margin-top:2px}
+  .tour-recs small{font-size:11px;color:#9bb4d6}
+  @media(max-width:480px){.tour-recs{gap:6px}.tour-recs div{padding:8px}.tour-recs strong{font-size:14px}.tour-caixa{padding:22px 16px 16px}.tour-caixa h2{font-size:20px}}
+  .tour-rodape{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid #1f3152}
+  .tour-rodape button{padding:10px 16px;font-size:14px}
+  .tour-pontos{display:flex;gap:6px}
+  .tour-pontos i{width:8px;height:8px;border-radius:4px;background:#2a3d63;transition:width .2s}
+  .tour-pontos i.on{background:#2a7fff;width:20px}
   .login-google{display:flex;justify-content:center;min-height:44px}
   .login-ou{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:#7f93b5;font-size:13px}
   .login-ou::before,.login-ou::after{content:"";flex:1;height:1px;background:#24324a}
@@ -1806,6 +1845,96 @@ async function iniciarConta() {
     setTimeout(() => caixa.querySelector('input')?.focus(), 50);
   }
   window.SoloiaAbrirLogin = abrirLogin;
+
+  // Apresentacao para quem nao esta logado: 1) 3 gratis 2) como funciona 3) exemplo de resultado.
+  // O exemplo usa numeros que o motor calculou para um laudo real de soja (mostrado como exemplo).
+  const track = (eventName, eventData = {}) => { try { window.parent.postMessage({ type: 'soloia:trackEvent', eventName, eventData }, '*'); } catch (_) {} };
+  function abrirTour(pag = 0) {
+    let m = document.getElementById('tourModal');
+    const fechar = () => {
+      m.hidden = true;
+      try { localStorage.setItem('soloia:tour', '1'); } catch (_) {}
+      track('tour_fechado', { pagina: +m.dataset.pag + 1 });
+    };
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'tourModal';
+      m.className = 'login-modal';
+      m.innerHTML = '<div class="tour-caixa" role="dialog" aria-modal="true" aria-labelledby="tourTit"></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', ev => { if (ev.target === m) fechar(); });
+      document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !m.hidden) fechar(); });
+    }
+    const B = window.SoloiaBarril;
+    const exemplo = [['P', '12', 'baixo'], ['K', '70,4', 'medio'], ['Ca', '4,33', 'alto'], ['Mg', '1,52', 'alto'], ['S', '7,2', 'medio'],
+      ['Zn', '0,25', 'medio'], ['Cu', '1,14', 'alto'], ['B', '0,5', 'alto'], ['Mn', '19', 'alto']].map(([sim, valor, cls]) => ({ sim, valor, cls }));
+    const cta = '<button type="button" class="tour-cta" data-tour="criar">Criar conta grátis</button>';
+    const PAGS = [
+      `<span class="tour-selo">🎁 3 interpretações grátis</span>
+        <h2 id="tourTit">Interprete sua análise de solo em minutos</h2>
+        <p class="tour-sub">Envie o PDF do laudo e receba o diagnóstico completo e a recomendação de calcário e adubação para a sua cultura. Para solos do RS e SC.</p>
+        <ul class="tour-lista">
+          <li><b>✓</b>Diagnóstico de cada nutriente, com classes coloridas</li>
+          <li><b>✓</b>Dose de calcário e de adubação (N, P₂O₅ e K₂O) por hectare</li>
+          <li><b>✓</b>Laudo com várias amostras? Escolha quais interpretar</li>
+          <li><b>✓</b>Histórico com o PDF, organizado em pastas por cliente</li>
+        </ul>
+        ${cta}
+        <p class="tour-nota">Crie sua conta e ganhe <strong>3 interpretações</strong> para testar. Sem cartão de crédito.</p>
+        <button type="button" class="login-link tour-entrar" data-tour="entrar">Já tenho conta · Entrar</button>`,
+      `<h2 id="tourTit">Como funciona</h2>
+        <ol class="tour-passos">
+          <li><span class="tour-n">1</span><div><strong>Anexe o PDF do laudo</strong>
+            <p>O PDF original que o laboratório enviou. Depois é só escolher a cultura.</p>
+            <div class="tour-mock"><span class="mk-arquivo">📄 laudo-fazenda.pdf</span><span class="mk-sel">Soja ▾</span></div></div></li>
+          <li><span class="tour-n">2</span><div><strong>Confira os valores</strong>
+            <p>O motor inteligente do Solo+IA lê o laudo e mostra os valores para você conferir. Os créditos só são usados quando você confirma.</p>
+            <div class="tour-mock"><table class="mk-tab"><tr><td>pH em água</td><td>5,05</td><td class="ok">✓</td></tr><tr><td>Fósforo</td><td>12 mg/dm³</td><td class="ok">✓</td></tr><tr><td>Potássio</td><td>70,4 mg/dm³</td><td class="ok">✓</td></tr></table></div></div></li>
+          <li><span class="tour-n">3</span><div><strong>Receba a interpretação</strong>
+            <p>Diagnóstico e recomendação na tela e no seu e-mail, salvos em Minhas análises.</p>
+            <div class="tour-mock"><span class="chip ruim">Fósforo: Baixo</span><span class="chip atencao">Calagem indicada</span><span class="chip bom">Cálcio: Alto</span></div></div></li>
+        </ol>`,
+      `<h2 id="tourTit">Veja um exemplo de resultado</h2>
+        <p class="tour-sub">Laudo de exemplo, cultura: soja.</p>
+        ${B ? `<div class="tour-barril">${B.svg(exemplo, { tema: 'escuro', id: 'veioTour' })}</div><p class="tour-lim">${B.frase(exemplo, s => `<b>${s}</b>`)}</p>` : ''}
+        <table class="mk-tab">
+          <tr><td>Fósforo (P)</td><td>12 mg/dm³</td><td class="c-b">Baixo</td></tr>
+          <tr><td>Potássio (K)</td><td>70,4 mg/dm³</td><td class="c-m">Médio</td></tr>
+          <tr><td>Cálcio</td><td>4,33 cmolc/dm³</td><td class="c-a">Alto</td></tr>
+          <tr><td>Saturação por bases (V)</td><td>49,8 %</td><td class="c-m">Abaixo de 75%</td></tr>
+        </table>
+        <div class="tour-recs">
+          <div><span>Calcário</span><strong>4,2 a 4,8 t/ha</strong><small>PRNT 100%</small></div>
+          <div><span>Fósforo (P₂O₅)</span><strong>95 kg/ha</strong><small>1º cultivo</small></div>
+          <div><span>Potássio (K₂O)</span><strong>105 kg/ha</strong><small>1º cultivo</small></div>
+        </div>
+        <p class="tour-nota">Valores de um laudo de exemplo. No seu resultado vêm todos os nutrientes do laudo.</p>`,
+    ];
+    const n = PAGS.length;
+    m.dataset.pag = pag;
+    const caixa = m.querySelector('.tour-caixa');
+    caixa.innerHTML = `<button type="button" class="login-fechar" aria-label="Fechar">×</button>${PAGS[pag]}
+      <div class="tour-rodape">
+        <button type="button" class="botao-sec" data-tour="voltar" style="visibility:${pag ? 'visible' : 'hidden'}">← Voltar</button>
+        <div class="tour-pontos" aria-label="Tela ${pag + 1} de ${n}">${PAGS.map((_, i) => `<i class="${i === pag ? 'on' : ''}"></i>`).join('')}</div>
+        ${pag < n - 1 ? `<button type="button" data-tour="prox">${pag ? 'Próximo' : 'Como funciona'} →</button>` : '<button type="button" data-tour="criar">Criar conta grátis</button>'}
+      </div>`;
+    caixa.querySelector('.login-fechar').addEventListener('click', fechar);
+    caixa.querySelectorAll('[data-tour]').forEach(b => b.addEventListener('click', () => {
+      const acao = b.dataset.tour;
+      if (acao === 'prox') { abrirTour(pag + 1); return; }
+      if (acao === 'voltar') { abrirTour(pag - 1); return; }
+      m.hidden = true;
+      try { localStorage.setItem('soloia:tour', '1'); } catch (_) {}
+      track(acao === 'criar' ? 'tour_cadastro' : 'tour_entrar', { pagina: pag + 1 });
+      abrirLogin(acao === 'criar' ? 'criar' : 'entrar');
+    }));
+    m.hidden = false;
+    caixa.scrollTop = 0;
+    m.scrollTop = 0;
+    track('tour_pagina', { pagina: pag + 1 });
+  }
+
   bar.hidden = false;
   bar.innerHTML = marca + '<div class="topo-centro"></div><div class="topo-acoes"><span class="topo-carregando" aria-label="Carregando"></span></div>';
 
@@ -1817,9 +1946,15 @@ async function iniciarConta() {
     if (aviso) {
       aviso.hidden = false;
       aviso.classList.add('aviso-login');
-      aviso.innerHTML = `<span>Entre na sua conta para enviar sua análise.</span><button type="button" class="botao-entrar" id="btnEntrar2">Entrar ou criar conta</button>`;
+      aviso.innerHTML = `<span>Entre na sua conta para enviar sua análise.</span><button type="button" class="botao-entrar" id="btnEntrar2">Entrar ou criar conta</button>
+        <button type="button" class="login-link" id="btnTour">Como funciona?</button>`;
       document.getElementById('btnEntrar2').addEventListener('click', () => abrirLogin());
+      document.getElementById('btnTour').addEventListener('click', () => abrirTour());
     }
+    // primeira visita sem conta: abre a apresentacao (nao abre na volta do login, compra ou troca de senha)
+    let viu = false;
+    try { viu = localStorage.getItem('soloia:tour') === '1'; } catch (_) {}
+    if (!viu && !location.search && !location.hash) setTimeout(() => { if (document.getElementById('loginModal')?.hidden !== false) abrirTour(); }, 700);
     // sem conta nao ha saldo para mostrar
     document.querySelectorAll('.creditos-info').forEach(el => { el.hidden = true; });
     // "Continuar como Fulano" do Google (so no dominio proprio)
