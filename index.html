@@ -32,6 +32,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     }
   </script>
   <script src="conta.js"></script>
+  <script src="barril.js"></script>
   <script type="module" src="confirmacao.js"></script>
 
   <style>
@@ -1536,19 +1537,16 @@ function chipsDiagnostico(el) {
 }
 
 // Barril de Liebig no topo do Diagnostico: uma tabua por nutriente classificado na tabela do motor.
-// A agua para na tabua mais curta e vaza por todas as que estiverem nessa altura (empate vaza em todas).
+// O desenho vem de barril.js (o mesmo que a funcao do Supabase usa para o PNG do e-mail).
 let barrilSeq = 0;
 function barrilLiebig(el) {
   const painel = el.querySelector('[data-painel="diag"]');
-  if (!painel || painel.querySelector('.barril')) return;
+  const B = window.SoloiaBarril;
+  if (!painel || !B || painel.querySelector('.barril')) return;
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const NUTS = [[/^f[óo]sforo/i, 'P', 'Fósforo'], [/^pot[áa]ssio/i, 'K', 'Potássio'], [/^c[áa]lcio/i, 'Ca', 'Cálcio'], [/^magn[ée]sio/i, 'Mg', 'Magnésio'],
-    [/^enxofre/i, 'S', 'Enxofre'], [/^zinco/i, 'Zn', 'Zinco'], [/^cobre/i, 'Cu', 'Cobre'], [/^boro/i, 'B', 'Boro'], [/^mangan[êe]s/i, 'Mn', 'Manganês'],
-    [/^ferro/i, 'Fe', 'Ferro'], [/^molibd/i, 'Mo', 'Molibdênio']];
+  const NUTS = [[/^f[óo]sforo/i, 'P'], [/^pot[áa]ssio/i, 'K'], [/^c[áa]lcio/i, 'Ca'], [/^magn[ée]sio/i, 'Mg'], [/^enxofre/i, 'S'], [/^zinco/i, 'Zn'],
+    [/^cobre/i, 'Cu'], [/^boro/i, 'B'], [/^mangan[êe]s/i, 'Mn'], [/^ferro/i, 'Fe'], [/^molibd/i, 'Mo']];
   const CLS = { 'muito baixo': 'muito_baixo', 'baixo': 'baixo', 'médio': 'medio', 'alto': 'alto', 'muito alto': 'muito_alto' };
-  const COR = { muito_baixo: '#E24B4A', baixo: '#D85A30', medio: '#EF9F27', alto: '#639922', muito_alto: '#0F6E56' };
-  const NOME = { muito_baixo: 'Muito baixo', baixo: 'Baixo', medio: 'Médio', alto: 'Alto', muito_alto: 'Muito alto' };
-  const ALT = { muito_baixo: .2, baixo: .4, medio: .6, alto: .82, muito_alto: .95 };
   const t = [];
   painel.querySelectorAll('tr').forEach(tr => {
     const tds = tr.querySelectorAll('td');
@@ -1557,105 +1555,36 @@ function barrilLiebig(el) {
     const nut = NUTS.find(([re]) => re.test(tds[0].textContent.trim()));
     if (!cls || !nut || t.some(x => x.sim === nut[1])) return;
     const r = tds[1].textContent.trim(), i = r.indexOf(' ');
-    t.push({ sim: nut[1], nome: nut[2], valor: i > 0 ? r.slice(0, i) : r, unid: i > 0 ? r.slice(i + 1) : '', cls });
+    t.push({ sim: nut[1], nome: B.NUT[nut[1]], valor: i > 0 ? r.slice(0, i) : r, unid: i > 0 ? r.slice(i + 1) : '', cls });
   });
   if (t.length < 3) return;
-
-  const n = t.length, cx = 340, yB = 325, H = 250, R0 = 178, e = .22, id = 'veio' + (++barrilSeq);
-  const hs = t.map(x => ALT[x.cls]), mx = Math.max(...hs), mn = Math.min(...hs);
-  const lis = hs.map((h, i) => h === mn ? i : -1).filter(i => i >= 0);
-  const R = y => R0 * (.84 + .16 * Math.sin(Math.PI * Math.min(1, Math.max(0, (yB - y) / (H * mx)))));
-  const P = (th, y) => [cx + R(y) * Math.sin(th), y + e * R(y) * Math.cos(th)];
-  const TH = [...Array(n + 1)].map((_, i) => Math.asin(-1 + 2 * i / n));
-  const yT = h => yB - h * H, yTop = yT(mx), lv = yT(mn);
-  const xy = p => p[0].toFixed(1) + ' ' + p[1].toFixed(1);
-  const pl = q => 'M' + q.map(xy).join('L') + 'Z';
-  const arc = (t0, t1, y, k = 10) => [...Array(k + 1)].map((_, j) => P(t0 + (t1 - t0) * j / k, y));
-  const edge = (th, y0, y1) => { const r = []; const st = y1 < y0 ? -5 : 5; for (let y = y0; st < 0 ? y > y1 : y < y1; y += st) r.push(P(th, y)); r.push(P(th, y1)); return r; };
-  const volta = (y, sinal, de, ate) => [...Array(37)].map((_, k) => { const th = de + (ate - de) * k / 36; return [cx + R(y) * Math.sin(th), y + sinal * e * R(y) * Math.cos(th)]; });
-
-  let s = `<defs><pattern id="${id}" width="16" height="64" patternUnits="userSpaceOnUse"><path d="M4 0Q1 16 4 32T4 64M11 0Q14 20 11 36T12 64" fill="none" stroke="#6B3E0E" stroke-width="1" opacity=".45"/></pattern></defs>`;
-  s += `<ellipse cx="${cx}" cy="${yB + e * R(yB) + 6}" rx="${R(yB) + 40}" ry="13" fill="#000" opacity=".25"/>`;
-  // parede de tras (interior) acima da agua; so aparece onde as tabuas da frente sao mais baixas
-  if (lv - yTop > 1) {
-    const back = [];
-    for (let y = lv; y >= yTop; y -= 4) back.push([cx - R(y), y]);
-    back.push(...volta(yTop, -1, -Math.PI / 2, Math.PI / 2));
-    for (let y = yTop; y <= lv; y += 4) back.push([cx + R(y), y]);
-    back.push(...volta(lv, 1, Math.PI / 2, -Math.PI / 2));
-    s += `<path d="${pl(back)}" fill="#4A2C0C"/>`;
-    TH.forEach(th => { s += `<line x1="${cx + R(yTop) * Math.sin(th)}" y1="${yTop - e * R(yTop) * Math.cos(th)}" x2="${cx + R(lv) * Math.sin(th)}" y2="${lv - e * R(lv) * Math.cos(th)}" stroke="#2E1B06" stroke-width="1.5"/>`; });
-  }
-  s += `<path d="M${volta(yTop, -1, -Math.PI / 2, Math.PI / 2).map(xy).join('L')}" fill="none" stroke="#9A6120" stroke-width="4" stroke-linecap="round"/>`;
-  s += `<ellipse cx="${cx}" cy="${lv}" rx="${R(lv) - 1}" ry="${e * R(lv)}" fill="#85B7EB" stroke="#378ADD" stroke-width="1.5"/>`;
-  s += `<ellipse cx="${cx - 25}" cy="${lv - 3}" rx="${R(lv) * .45}" ry="${e * R(lv) * .35}" fill="none" stroke="#E6F1FB" stroke-width="1.2" opacity=".8"/>`;
-  const aros = [.1, .5, .86].map(f => yB - H * mx * f);
-  t.forEach((x, i) => {
-    const ta = TH[i], tb = TH[i + 1], yt = yT(hs[i]);
-    const d = pl([...edge(ta, yB, yt), ...arc(ta, tb, yt), ...edge(tb, yt, yB), ...arc(tb, ta, yB)]);
-    const xn = (Math.sin(ta) + Math.sin(tb)) / 2;
-    let g = `<g class="tabua" data-i="${i}" style="cursor:pointer"><path d="${d}" fill="${i % 2 ? '#C4832F' : '#B97828'}"/><path d="${d}" fill="url(#${id})"/>`;
-    aros.forEach(hy => {
-      if (yt >= hy - 10) return;
-      const rb = P((ta + tb) / 2, hy + 5);
-      g += `<path d="${pl([...arc(ta, tb, hy, 6), ...arc(tb, ta, hy + 10, 6)])}" fill="#5F5E5A"/><path d="M${arc(ta, tb, hy + 1, 6).map(xy).join('L')}" fill="none" stroke="#B4B2A9" stroke-width="1"/><circle cx="${rb[0]}" cy="${rb[1]}" r="1.8" fill="#2C2C2A"/>`;
-    });
-    g += `<path d="${d}" fill="#000" opacity="${(.4 * Math.abs(xn) ** 1.7).toFixed(3)}"/>`;
-    if (xn > -.55 && xn < -.1) g += `<path d="${d}" fill="#FFF" opacity=".07"/>`;
-    s += g + `<path d="${d}" fill="none" stroke="#4A2C0C" stroke-width="1.3"/></g>`;
-  });
-  // agua vazando por todas as tabuas mais curtas
-  const topos = [];
-  lis.forEach(li => {
-    const tm = (TH[li] + TH[li + 1]) / 2, [x0, y0] = P(tm, lv), yG = yB + e * R(yB) * Math.cos(tm) + 6;
-    // muitas tabuas vazando: filetes finos para nao cobrir o barril
-    const wd = Math.min(26, Math.max(8, (P(TH[li + 1], lv)[0] - P(TH[li], lv)[0]) * (lis.length > 2 ? .3 : .62)));
-    const L = [], Rr = [];
-    for (let y = y0; y <= yG; y += 5) { L.push([x0 - wd / 2 + 2.5 * Math.sin(y / 7), y]); Rr.unshift([x0 + wd / 2 + 2.5 * Math.sin(y / 7 + 1.3), y]); }
-    topos.push([x0, y0]);
-    s += `<ellipse cx="${x0}" cy="${yG + 3}" rx="${wd * 1.9}" ry="7" fill="#378ADD" opacity=".45"/><path d="${pl([...L, ...Rr])}" fill="#378ADD" opacity=".75" style="pointer-events:none"/><ellipse cx="${x0}" cy="${y0}" rx="${wd / 2 + 4}" ry="4" fill="#85B7EB" style="pointer-events:none"/>`;
-  });
-  const py = Math.max(18, yTop - e * R(yTop) - 36), lx = topos.reduce((m, p) => m + p[0], 0) / topos.length;
-  const lt = lis.length > 1 ? 'limitantes' : 'limitante', lw = lt.length * 7.5 + 26;
-  if (lis.length <= 4) topos.forEach(([x, y]) => { s += `<path d="M${lx} ${py + 12}L${x} ${y - 6}" fill="none" stroke="#F09595" stroke-width="1.5" stroke-dasharray="3 3"/>`; });
-  s += `<rect x="${lx - lw / 2}" y="${py - 12}" width="${lw}" height="24" rx="12" fill="#FCEBEB" stroke="#A32D2D"/><text x="${lx}" y="${py + 4.5}" text-anchor="middle" font-size="12" font-weight="600" fill="#791F1F">${lt}</text>`;
-  t.forEach((x, i) => {
-    const [bx, by] = P((TH[i] + TH[i + 1]) / 2, yB), lim = lis.includes(i);
-    s += `<circle cx="${bx}" cy="${by + 28}" r="13" fill="${COR[x.cls]}" stroke="${lim ? '#F09595' : '#0c1a33'}" stroke-width="${lim ? 2.5 : 1.5}"/>`
-      + `<text x="${bx}" y="${by + 32}" text-anchor="middle" font-size="${x.sim.length > 1 ? 11 : 12}" font-weight="600" fill="${x.cls === 'medio' ? '#412402' : '#FFFFFF'}">${x.sim}</text>`
-      + `<text class="bv" x="${bx}" y="${by + 56}" text-anchor="middle" font-size="12" fill="#b8cbe6">${esc(x.valor)}</text>`;
-  });
-
-  const nomes = lis.map(i => `<b>${esc(t[i].nome)}</b>`);
-  const lista = nomes.length > 1 ? nomes.slice(0, -1).join(', ') + ' e ' + nomes[nomes.length - 1] : nomes[0];
-  const classe = NOME[t[lis[0]].cls].toLowerCase();
-  const texto = lis.length === t.length ? `Limitantes: todas as tábuas empatadas em ${classe}.`
-    : `${lis.length > 1 ? 'Limitantes' : 'Limitante'}: ${lista} (${classe}). A água não passa dessa altura.`;
-  const classes = [...new Set(t.map(x => x.cls))].sort((a, b) => ALT[a] - ALT[b]);
+  const lis = B.limitantes(t);
+  const classes = [...new Set(t.map(x => x.cls))].sort((a, b) => B.ALT[a] - B.ALT[b]);
 
   const box = document.createElement('div');
   box.className = 'barril';
   box.innerHTML = `<p class="barril-tit">Barril de Liebig: a tábua mais curta limita a produção</p>
-    <div class="barril-svg"><svg viewBox="110 0 460 425" role="img" aria-label="Barril de Liebig com uma tábua por nutriente">${s}</svg><div class="barril-dica"></div></div>
-    <div class="barril-leg">${classes.map(c => `<span><i style="background:${COR[c]}"></i>${NOME[c]}</span>`).join('')}</div>
-    <p class="barril-txt">${texto}</p>`;
+    <div class="barril-svg">${B.svg(t, { tema: 'escuro', id: 'veio' + (++barrilSeq) })}<div class="barril-dica"></div></div>
+    <div class="barril-leg">${classes.map(c => `<span><i style="background:${B.COR[c]}"></i>${B.NOME[c]}</span>`).join('')}</div>
+    <p class="barril-txt">${B.frase(t, s => `<b>${s}</b>`)}</p>`;
   (painel.querySelector('.chips') || painel.querySelector('h2') || painel.firstElementChild)?.after(box);
 
   const wrap = box.querySelector('.barril-svg'), dica = box.querySelector('.barril-dica'), tabuas = box.querySelectorAll('.tabua');
   tabuas.forEach(g => {
     const i = +g.dataset.i, x = t[i];
+    g.style.cursor = 'pointer';
     const on = ev => {
       tabuas.forEach(o => { o.style.opacity = o === g ? 1 : .55; });
       dica.innerHTML = `<div style="font-weight:600">${esc(x.nome)} (${x.sim})</div><div>${esc(x.valor)} ${esc(x.unid)}</div>`
-        + `<div><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${COR[x.cls]};margin-right:6px"></i>${NOME[x.cls]}</div>`
+        + `<div><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${B.COR[x.cls]};margin-right:6px"></i>${B.NOME[x.cls]}</div>`
         + (lis.includes(i) ? '<div style="color:#ffc2c8;margin-top:4px">Tábua mais curta: a água não passa daqui.</div>' : '');
       dica.style.display = 'block';
       const r = wrap.getBoundingClientRect();
-      let px = ev.clientX - r.left + 14, py2 = ev.clientY - r.top + 14;
+      let px = ev.clientX - r.left + 14, py = ev.clientY - r.top + 14;
       if (px + dica.offsetWidth > r.width) px = ev.clientX - r.left - dica.offsetWidth - 14;
-      if (py2 + dica.offsetHeight > r.height) py2 = ev.clientY - r.top - dica.offsetHeight - 10;
+      if (py + dica.offsetHeight > r.height) py = ev.clientY - r.top - dica.offsetHeight - 10;
       dica.style.left = Math.max(0, px) + 'px';
-      dica.style.top = Math.max(0, py2) + 'px';
+      dica.style.top = Math.max(0, py) + 'px';
     };
     g.addEventListener('pointermove', on);
     g.addEventListener('pointerdown', on);
