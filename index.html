@@ -445,7 +445,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .tour-recs small{font-size:11px;color:#9bb4d6}
   @media(max-width:480px){.tour-recs{gap:6px}.tour-recs div{padding:8px}.tour-recs strong{font-size:14px}.tour-caixa{padding:22px 16px 16px}.tour-caixa h2{font-size:20px}}
   .tour-rodape{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid #1f3152}
-  .tour-rodape button{padding:10px 16px;font-size:14px}
+  .tour-rodape .tour-seta{width:44px;height:44px;padding:0 0 3px;border-radius:50%;font-size:30px;line-height:1;display:grid;place-items:center}
   .tour-pontos{display:flex;gap:6px}
   .tour-pontos i{width:8px;height:8px;border-radius:4px;background:#2a3d63;transition:width .2s}
   .tour-pontos i.on{background:#2a7fff;width:20px}
@@ -1868,19 +1868,19 @@ async function iniciarConta() {
     const B = window.SoloiaBarril;
     const exemplo = [['P', '12', 'baixo'], ['K', '70,4', 'medio'], ['Ca', '4,33', 'alto'], ['Mg', '1,52', 'alto'], ['S', '7,2', 'medio'],
       ['Zn', '0,25', 'medio'], ['Cu', '1,14', 'alto'], ['B', '0,5', 'alto'], ['Mn', '19', 'alto']].map(([sim, valor, cls]) => ({ sim, valor, cls }));
-    const cta = '<button type="button" class="tour-cta" data-tour="criar">Criar conta grátis</button>';
+    const cta = '<button type="button" class="tour-cta" data-tour="criar">Crie sua conta e ganhe interpretações de graça</button>';
     const PAGS = [
-      `<span class="tour-selo">🎁 3 interpretações grátis</span>
+      `<span class="tour-selo">🎁 Interpretações grátis</span>
         <h2 id="tourTit">Interprete sua análise de solo em minutos</h2>
         <p class="tour-sub">Envie o PDF do laudo e receba o diagnóstico completo e a recomendação de calcário e adubação para a sua cultura. Para solos do RS e SC.</p>
         <ul class="tour-lista">
           <li><b>✓</b>Diagnóstico de cada nutriente, com classes coloridas</li>
           <li><b>✓</b>Dose de calcário e de adubação (N, P₂O₅ e K₂O) por hectare</li>
           <li><b>✓</b>Laudo com várias amostras? Escolha quais interpretar</li>
-          <li><b>✓</b>Histórico com o PDF, organizado em pastas por cliente</li>
+          <li><b>✓</b>Histórico com o PDF, organizado em pastas do jeito que você quiser</li>
         </ul>
         ${cta}
-        <p class="tour-nota">Crie sua conta e ganhe <strong>3 interpretações</strong> para testar. Sem cartão de crédito.</p>
+        <p class="tour-nota">Sem cartão de crédito.</p>
         <button type="button" class="login-link tour-entrar" data-tour="entrar">Já tenho conta · Entrar</button>`,
       `<h2 id="tourTit">Como funciona</h2>
         <ol class="tour-passos">
@@ -1908,16 +1908,17 @@ async function iniciarConta() {
           <div><span>Fósforo (P₂O₅)</span><strong>95 kg/ha</strong><small>1º cultivo</small></div>
           <div><span>Potássio (K₂O)</span><strong>105 kg/ha</strong><small>1º cultivo</small></div>
         </div>
-        <p class="tour-nota">Valores de um laudo de exemplo. No seu resultado vêm todos os nutrientes do laudo.</p>`,
+        <p class="tour-nota">Valores de um laudo de exemplo. No seu resultado vêm todos os nutrientes do laudo.</p>
+        ${cta}`,
     ];
     const n = PAGS.length;
     m.dataset.pag = pag;
     const caixa = m.querySelector('.tour-caixa');
     caixa.innerHTML = `<button type="button" class="login-fechar" aria-label="Fechar">×</button>${PAGS[pag]}
       <div class="tour-rodape">
-        <button type="button" class="botao-sec" data-tour="voltar" style="visibility:${pag ? 'visible' : 'hidden'}">← Voltar</button>
+        <button type="button" class="botao-sec tour-seta" data-tour="voltar" aria-label="Voltar" style="visibility:${pag ? 'visible' : 'hidden'}">‹</button>
         <div class="tour-pontos" aria-label="Tela ${pag + 1} de ${n}">${PAGS.map((_, i) => `<i class="${i === pag ? 'on' : ''}"></i>`).join('')}</div>
-        ${pag < n - 1 ? `<button type="button" data-tour="prox">${pag ? 'Próximo' : 'Como funciona'} →</button>` : '<button type="button" data-tour="criar">Criar conta grátis</button>'}
+        <button type="button" class="tour-seta" data-tour="prox" aria-label="Próximo" style="visibility:${pag < n - 1 ? 'visible' : 'hidden'}">›</button>
       </div>`;
     caixa.querySelector('.login-fechar').addEventListener('click', fechar);
     caixa.querySelectorAll('[data-tour]').forEach(b => b.addEventListener('click', () => {
