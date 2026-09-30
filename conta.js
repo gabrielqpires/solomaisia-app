@@ -190,12 +190,32 @@
     } catch (e) { console.error('[Solo+IA] salvar historico:', e); }
   }
 
+  // Impressao digital do PDF (SHA-256 dos bytes): o mesmo arquivo sempre da o mesmo valor
+  async function hashArquivo(file) {
+    const b = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+    return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Laudo com o mesmo PDF ja enviado por este usuario (o mais recente), ou null. Qualquer falha => null
+  // (o site so le o PDF normalmente).
+  async function laudoRepetido(file) {
+    try {
+      if (!(await sessaoSupabase())) return null;
+      const h = await hashArquivo(file);
+      const { data, error } = await cliente.from('laudos').select('id, criado_em, arquivo, total_amostras, interpretacoes(amostra_indice)')
+        .eq('arquivo_hash', h).not('pdf_path', 'is', null).order('criado_em', { ascending: false }).limit(1);
+      if (error || !data?.length) return null;
+      return data[0];
+    } catch (e) { console.warn('[Solo+IA] laudo repetido:', e); return null; }
+  }
+
   // Laudo lido: guarda o PDF (pasta privada do usuario) e a leitura, para ver o PDF depois e gerar outras
   // amostras sem ler de novo. Devolve o id do laudo (ou null se falhar; a analise segue normal).
   async function guardarLaudo({ file, dados, cultura, pastaId }) {
     try {
       const s = await sessaoSupabase();
       if (!s) return null;
+      const arquivoHash = file ? await hashArquivo(file).catch(() => null) : null;
       let pdfPath = null;
       if (file) {
         const caminho = `${s.user.id}/${(crypto.randomUUID && crypto.randomUUID()) || Date.now()}.pdf`;
@@ -209,7 +229,7 @@
         mo: v(a, 'materiaOrganicaPercentual'), argila: v(a, 'argilaPercentual'), ctc: v(a, 'ctcPh7CmolcDm3'), v: v(a, 'saturacaoBasesPercentual') }));
       const { data, error } = await cliente.from('laudos').insert({
         arquivo: file?.name || null, laboratorio: dados.laboratorio || null, localizacao: dados.localizacao || null, cultura: cultura || null,
-        total_amostras: rotulos.length || 1, rotulos, valores, leitura: dados, pdf_path: pdfPath, pasta_id: pastaId || null,
+        total_amostras: rotulos.length || 1, rotulos, valores, leitura: dados, pdf_path: pdfPath, pasta_id: pastaId || null, arquivo_hash: arquivoHash,
       }).select('id').single();
       if (error) { console.error('[Solo+IA] guardar laudo:', error); return null; }
       return data.id;
@@ -350,5 +370,5 @@
   }
 
   window.SoloiaConta = { sessao, entrar, entrarSenha, criarConta, reenviarConfirmacao, esqueciSenha, definirSenha, erroAmigavel, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
-    guardarLaudo, listarLaudos, lerLaudo, listarPastas, criarPasta, renomearPasta, apagarPasta, moverLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
+    guardarLaudo, laudoRepetido, listarLaudos, lerLaudo, listarPastas, criarPasta, renomearPasta, apagarPasta, moverLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
 })();

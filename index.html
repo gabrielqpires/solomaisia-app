@@ -98,6 +98,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .relatorio-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #24324a}
   .relatorio-acoes button{background:#16223d;box-shadow:none;padding:10px 14px;font-size:14px}
   .relatorio-acoes button.principal{background:var(--grad)}
+  /* Laudo ja enviado (mesmo PDF): abrir o salvo em vez de ler de novo */
+  .repetido{background:#0c1a33;border:1px solid #2a3d63;border-radius:12px;padding:12px 14px;text-align:left;line-height:1.5;color:#e9efff}
+  .repetido-acoes{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px}
   /* Barril de Liebig no topo do Diagnostico */
   .barril{margin:6px 0 16px;background:#0c1a33;border:1px solid #1f3152;border-radius:12px;padding:12px 12px 10px}
   .barril-tit{font-size:13px;color:var(--muted);margin:0 0 2px}
@@ -1132,6 +1135,44 @@ function assinaturaUpload(auth){
 // Passo 1: ler o laudo (sem gastar creditos) e abrir a conferencia
 // Laudo ja lido, aberto de Minhas analises (site proprio): { f, dados, laudoId, marcadas, feitas }
 let reuso = null;
+// PDF que o usuario mandou ler de novo mesmo ja tendo enviado (nao pergunta outra vez)
+let lerMesmoAssim = null;
+
+// Mesmo PDF ja enviado: oferece abrir o laudo salvo (sem ler de novo) em vez de gastar outra leitura
+function oferecerRepetido(rep, f, culturaId) {
+  const total = rep.total_amostras || 1;
+  const feitas = new Set((rep.interpretacoes || []).map(x => x.amostra_indice).filter(Number.isInteger)).size;
+  const faltam = Math.max(0, total - feitas);
+  let dia = '';
+  try { dia = new Date(rep.criado_em).toLocaleDateString('pt-BR'); } catch (_) {}
+  trackEvent('laudo_repetido_detectado', { amostras: total, feitas });
+  const acao = faltam > 0
+    ? '<button type="button" class="botao-entrar" id="repAbrir">Abrir sem ler de novo</button>'
+    : (window.SoloiaAbrirLista ? '<button type="button" class="botao-entrar" id="repVer">Ver em Minhas análises</button>' : '');
+  avisarForm(`<div class="repetido"><div>📄 <strong>Você já enviou este laudo</strong>${dia ? ' em ' + dia : ''}${total > 1 ? ` (${total} amostras, ${feitas} já ${feitas === 1 ? 'interpretada' : 'interpretadas'})` : ''}.
+      ${faltam > 0 ? 'Ele está salvo em Minhas análises: dá para abrir e interpretar sem ler o PDF de novo.' : 'Todas as amostras dele já foram interpretadas.'}</div>
+    <div class="repetido-acoes">${acao}<button type="button" class="botao-link" id="repLer">Ler de novo mesmo assim</button></div></div>`);
+  document.getElementById('repAbrir')?.addEventListener('click', async ev => {
+    ev.target.disabled = true;
+    ev.target.textContent = 'Abrindo…';
+    try {
+      await window.SoloiaReabrirLaudo(rep.id);
+      if (culturaId) cultureEl.value = culturaId;
+      trackEvent('laudo_repetido_reaberto', { amostras: total, feitas });
+      avisarForm('');
+      startBtn.click();
+    } catch (e) {
+      avisarForm(escapeHtml(e.message || 'Não foi possível abrir o laudo.'));
+    }
+  });
+  document.getElementById('repVer')?.addEventListener('click', () => { avisarForm(''); window.SoloiaAbrirLista(); });
+  document.getElementById('repLer').addEventListener('click', () => {
+    lerMesmoAssim = f;
+    trackEvent('laudo_repetido_lido_de_novo', { amostras: total, feitas });
+    avisarForm('');
+    startBtn.click();
+  });
+}
 
 // Tela de conferencia (leitura nova ou laudo ja lido) e geracao das amostras marcadas
 function abrirConfirmacao({ f, culturaId, culture, dados, laudoId, marcadas, feitas }) {
@@ -1236,6 +1277,14 @@ startBtn.addEventListener('click', async () => {
     trackEvent('erro_consentimento_nao_aceito');
     return;
   }
+  // site proprio: mesmo PDF ja enviado? oferece abrir o laudo salvo em vez de ler de novo
+  if (!window.SOLOIA_EMBUTIDO && window.SoloiaConta && lerMesmoAssim !== f) {
+    startBtn.disabled = true;
+    const rep = await window.SoloiaConta.laudoRepetido(f);
+    startBtn.disabled = false;
+    if (rep) { oferecerRepetido(rep, f, culturaId); return; }
+  }
+  lerMesmoAssim = null;
 
   trackEvent('botao_ler_laudo_clicado', { arquivo_nome: f.name, arquivo_tamanho: f.size, cultura: culturaId });
   const loader = createStagedLoader(LER_ETAPAS, [9000, 9000, 12000, 8000]);
@@ -2065,6 +2114,7 @@ async function iniciarConta() {
     try { window.scrollTo({ top: 0 }); } catch (_) {}
   }
   function fecharHistorico() { mostrarVista(null); }
+  window.SoloiaAbrirLista = () => abrirLista();
   // Minhas analises: um cartao por laudo (PDF) com miniatura, tabela das amostras e escolha do que gerar
   const num = x => (typeof x === 'number' ? x.toLocaleString('pt-BR', { maximumFractionDigits: 2 }) : '—');
   const CUSTO = 16;
