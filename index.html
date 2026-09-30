@@ -1774,7 +1774,7 @@ function abrirIndicacao() {
     whats.removeAttribute('aria-disabled');
     placar.textContent = c.convidados
       ? `${c.convidados} ${c.convidados === 1 ? 'colega entrou' : 'colegas entraram'} pelo seu link · você ganhou ${Number(c.creditos_ganhos || 0).toLocaleString('pt-BR')} créditos`
-      : 'Ninguém entrou pelo seu link ainda. Que tal mandar no grupo da cooperativa? 😉';
+      : 'Ninguém entrou pelo seu link ainda. Que tal enviar para quem também pode querer usar?';
     copiar.addEventListener('click', async () => {
       await copiarTexto(input.value);
       copiar.textContent = 'Copiado ✓';
