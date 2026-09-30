@@ -61,7 +61,7 @@
       // conta nova (primeira sessao): conversao de cadastro para o Google Ads/GA4
       if (d.novo) { try { (window.dataLayer = window.dataLayer || []).push({ event: 'cadastro_concluido', source: 'soloia_iframe', metodo: s.user?.app_metadata?.provider || 'email' }); } catch (_) {} }
       const auth = { isLogged: true, memberId: d.memberId, email: d.email, creditos: Number(d.creditos) || 0, upload: d.upload,
-        nome: meta.full_name || meta.name || null, foto: meta.avatar_url || meta.picture || null };
+        nome: meta.full_name || meta.name || null, foto: meta.avatar_url || meta.picture || null, novo: !!d.novo };
       cache = { token: s.access_token, auth };
       return auth;
     } catch (e) {
@@ -98,8 +98,10 @@
   // Devolve 'confirmar' (precisa clicar no e-mail) ou 'entrou' (confirmacao de e-mail desligada)
   async function criarConta({ nome, email, senha }) {
     const c = await cli();
+    // o convite vai junto no cadastro: vale mesmo se a pessoa confirmar o e-mail em outro aparelho
+    const convite = conviteGuardado();
     const { data, error } = await c.auth.signUp({ email, password: senha,
-      options: { data: { full_name: nome }, emailRedirectTo: volta() } });
+      options: { data: { full_name: nome, ...(convite ? { convite } : {}) }, emailRedirectTo: volta() } });
     if (error) throw new Error(erroAmigavel(error));
     // e-mail ja cadastrado: o Supabase responde sem erro, mas sem identidades
     if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error(erroAmigavel('already registered'));
@@ -188,6 +190,41 @@
         laudo_id: laudoId || null, amostra_indice: Number.isInteger(amostraIndice) ? amostraIndice : null });
       if (error) console.error('[Solo+IA] salvar historico:', error);
     } catch (e) { console.error('[Solo+IA] salvar historico:', e); }
+  }
+
+  // Indique e ganhe: o codigo do link (/c/CODIGO) fica guardado 30 dias neste navegador
+  const CHAVE_CONVITE = 'soloia:convite';
+  function guardarConvite(codigo) {
+    try { localStorage.setItem(CHAVE_CONVITE, JSON.stringify({ codigo, ate: Date.now() + 30 * 24 * 3600 * 1000 })); } catch (_) {}
+  }
+  function conviteGuardado() {
+    try {
+      const c = JSON.parse(localStorage.getItem(CHAVE_CONVITE) || 'null');
+      if (c && c.ate > Date.now() && /^[A-Z0-9]{3,20}$/.test(c.codigo)) return c.codigo;
+      localStorage.removeItem(CHAVE_CONVITE);
+    } catch (_) {}
+    return null;
+  }
+  function esquecerConvite() { try { localStorage.removeItem(CHAVE_CONVITE); } catch (_) {} }
+  // { ok, nome, bonus } para a faixa "Fulano te convidou" (funciona sem conta)
+  async function conviteInfo(codigo) {
+    const c = await cli();
+    const { data, error } = await c.rpc('convite_info', { p_codigo: codigo });
+    return error ? null : data;
+  }
+  // Conta nova: aplica o convite (o banco confere tudo). Sem codigo, usa o guardado no cadastro.
+  async function aplicarConvite(codigo) {
+    if (!(await sessaoSupabase())) return null;
+    const { data, error } = await cliente.rpc('aplicar_convite', { p_codigo: codigo || null });
+    if (error) throw error;
+    return data;
+  }
+  // { ok, codigo, convidados, premiados, creditos_ganhos } (cria o codigo na primeira vez)
+  async function meuConvite() {
+    if (!(await sessaoSupabase())) return { ok: false };
+    const { data, error } = await cliente.rpc('meu_convite');
+    if (error) throw error;
+    return data;
   }
 
   // Impressao digital do PDF (SHA-256 dos bytes): o mesmo arquivo sempre da o mesmo valor
@@ -370,5 +407,6 @@
   }
 
   window.SoloiaConta = { sessao, entrar, entrarSenha, criarConta, reenviarConfirmacao, esqueciSenha, definirSenha, erroAmigavel, botaoGoogle, sugerirGoogle, sair, salvar, listar, abrir, apagar, criarPagamento, confirmarPagamento,
+    guardarConvite, conviteGuardado, esquecerConvite, conviteInfo, aplicarConvite, meuConvite,
     guardarLaudo, laudoRepetido, listarLaudos, lerLaudo, listarPastas, criarPasta, renomearPasta, apagarPasta, moverLaudo, linkPdf, pdfBlob, baixarPdf, enderecoPdf, apagarLaudo };
 })();

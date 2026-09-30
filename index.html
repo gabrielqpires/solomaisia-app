@@ -98,6 +98,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .relatorio-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #24324a}
   .relatorio-acoes button{background:#16223d;box-shadow:none;padding:10px 14px;font-size:14px}
   .relatorio-acoes button.principal{background:var(--grad)}
+  /* Indique e ganhe: faixa do convite, card depois do resultado e janela do menu */
+  .convite-faixa{display:flex;align-items:center;justify-content:center;gap:10px 14px;flex-wrap:wrap;margin:14px auto 0;width:calc(100% - 32px);max-width:760px;background:#123626;border:1px solid #1f5a3c;color:#c9f2d8;border-radius:12px;padding:10px 14px;font-size:14.5px;line-height:1.45;text-align:center}
+  .convite-faixa strong{color:#fff}
+  .convite-faixa button{padding:7px 16px;font-size:13px;border-radius:999px}
+  .card-indicar{margin-top:14px;background:#0c1a33;border:1px solid #1f5a3c;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.5;color:#e9efff}
+  .card-indicar-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .botao-whats{display:inline-flex;align-items:center;justify-content:center;background:#1f8f4e;color:#fff !important;text-decoration:none;font-weight:700;font-size:14px;padding:10px 16px;border-radius:10px}
+  .botao-whats:hover{background:#23a35a;color:#fff}
+  .botao-whats[aria-disabled="true"]{opacity:.5;pointer-events:none}
+  .indicar-link{display:flex;gap:8px;margin:14px 0 10px}
+  .indicar-link input{flex:1;min-width:0;background:#0b1226;border:1px solid #2a3d63;border-radius:10px;color:#e9efff;padding:10px 12px;font-size:14px}
+  .indicar-whats{width:100%;padding:13px;font-size:15px}
+  .indicar-placar{margin:12px 0 0;font-size:14px;color:#b8cbe6}
   /* Laudo ja enviado (mesmo PDF): abrir o salvo em vez de ler de novo */
   .repetido{background:#0c1a33;border:1px solid #2a3d63;border-radius:12px;padding:12px 14px;text-align:left;line-height:1.5;color:#e9efff}
   .repetido-acoes{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px}
@@ -127,7 +140,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
     .barril-txt,.barril-txt b,.barril-tit,.barril-leg{color:#000 !important}
     .barril-svg svg{max-width:400px !important}
     .barril .bv{fill:#333 !important}
-    .barril-dica{display:none !important}
+    .barril-dica,.card-indicar{display:none !important}
     /* "Imprimir / salvar PDF": so o relatorio clicado (caminho ate ele marcado em imprimirRelatorio) */
     body.imprimir-um > :not(.print-caminho),
     body.imprimir-um .print-caminho > :not(.print-caminho):not(.print-alvo){display:none !important}
@@ -1683,6 +1696,95 @@ function barrilLiebig(el) {
   });
 }
 
+// Indique e ganhe: link pessoal (/c/CODIGO), mensagem do WhatsApp e o codigo (buscado uma vez por pagina)
+const linkConvite = c => `https://www.solomaisia.com.br/c/${c}`;
+const whatsConvite = c => 'https://wa.me/?text=' + encodeURIComponent(`Tô usando o Solo+IA pra interpretar análise de solo: sai o diagnóstico e a recomendação de calcário e adubação em minutos. Entra pelo meu link que tu ganha interpretações grátis: ${linkConvite(c)}`);
+// bonus em creditos -> "1 interpretação extra" (16 creditos por amostra)
+const textoBonus = b => { const n = Math.floor(Number(b) / 16); return n >= 1 ? (n === 1 ? '1 interpretação extra' : `${n} interpretações extras`) : `${b} créditos extras`; };
+const trackGlobal = (eventName, eventData = {}) => { try { window.parent.postMessage({ type: 'soloia:trackEvent', eventName, eventData }, '*'); } catch (_) {} };
+let conviteBusca = null;
+function meuConviteUmaVez(forcar = false) {
+  if (!conviteBusca || forcar) conviteBusca = window.SoloiaConta.meuConvite().catch(e => { conviteBusca = null; throw e; });
+  return conviteBusca;
+}
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); }
+  catch (_) { const ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (__) {} ta.remove(); }
+}
+
+// Card depois do resultado (uma vez por pagina; nao aparece em Minhas analises nem no Wix)
+let cardIndicarMostrado = false;
+function cardIndicacao(el) {
+  if (cardIndicarMostrado || window.SOLOIA_EMBUTIDO || !window.SoloiaConta?.meuConvite || el.closest('#historico')) return;
+  cardIndicarMostrado = true;
+  meuConviteUmaVez().then(c => {
+    if (!c?.ok) return;
+    const div = document.createElement('div');
+    div.className = 'card-indicar';
+    div.innerHTML = `<div><strong>🎁 Gostou? Indique para um colega.</strong> Ele ganha 1 interpretação extra ao criar a conta, e você ganha 3 quando ele fizer a primeira análise.</div>
+      <div class="card-indicar-acoes"><a class="botao-whats" href="${whatsConvite(c.codigo)}" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+        <button type="button" class="botao-sec" data-copiar>Copiar link</button></div>`;
+    div.querySelector('.botao-whats').addEventListener('click', () => trackGlobal('convite_whatsapp', { origem: 'resultado' }));
+    div.querySelector('[data-copiar]').addEventListener('click', async ev => {
+      await copiarTexto(linkConvite(c.codigo));
+      ev.target.textContent = 'Link copiado ✓';
+      trackGlobal('convite_copiado', { origem: 'resultado' });
+    });
+    el.querySelector('.report')?.appendChild(div);
+  }).catch(() => {});
+}
+
+// Janela "Indique e ganhe" (menu da conta): link, copiar, WhatsApp e placar
+function abrirIndicacao() {
+  let m = document.getElementById('indicarModal');
+  const fechar = () => { m.hidden = true; };
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'indicarModal';
+    m.className = 'login-modal';
+    m.innerHTML = '<div class="tour-caixa" role="dialog" aria-modal="true" aria-labelledby="indicarTit"></div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', ev => { if (ev.target === m) fechar(); });
+    document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !m.hidden) fechar(); });
+  }
+  const caixa = m.querySelector('.tour-caixa');
+  caixa.innerHTML = `<button type="button" class="login-fechar" aria-label="Fechar">×</button>
+    <span class="tour-selo">🎁 Indique e ganhe</span>
+    <h2 id="indicarTit">Ganhe interpretações indicando o Solo+IA</h2>
+    <ul class="tour-lista">
+      <li><b>1</b>Envie seu link para um colega</li>
+      <li><b>2</b>Ele cria a conta e ganha 1 interpretação extra</li>
+      <li><b>3</b>Quando ele fizer a primeira análise, você ganha 3 interpretações (48 créditos)</li>
+    </ul>
+    <div class="indicar-link"><input id="indicarLink" readonly value="Carregando seu link…" aria-label="Seu link de convite">
+      <button type="button" class="botao-sec" id="indicarCopiar" disabled>Copiar</button></div>
+    <a class="botao-whats indicar-whats" id="indicarWhats" href="#" target="_blank" rel="noopener" aria-disabled="true">Enviar no WhatsApp</a>
+    <p class="indicar-placar" id="indicarPlacar"></p>
+    <p class="tour-nota">Vale para contas novas. Até 10 prêmios por mês.</p>`;
+  caixa.querySelector('.login-fechar').addEventListener('click', fechar);
+  m.hidden = false;
+  trackGlobal('indicar_aberto');
+  const input = caixa.querySelector('#indicarLink'), copiar = caixa.querySelector('#indicarCopiar');
+  const whats = caixa.querySelector('#indicarWhats'), placar = caixa.querySelector('#indicarPlacar');
+  meuConviteUmaVez(true).then(c => {
+    if (!c?.ok) throw new Error('sem convite');
+    input.value = linkConvite(c.codigo);
+    copiar.disabled = false;
+    whats.href = whatsConvite(c.codigo);
+    whats.removeAttribute('aria-disabled');
+    placar.textContent = c.convidados
+      ? `${c.convidados} ${c.convidados === 1 ? 'colega entrou' : 'colegas entraram'} pelo seu link · você ganhou ${Number(c.creditos_ganhos || 0).toLocaleString('pt-BR')} créditos`
+      : 'Ninguém entrou pelo seu link ainda. Que tal mandar no grupo da cooperativa? 😉';
+    copiar.addEventListener('click', async () => {
+      await copiarTexto(input.value);
+      copiar.textContent = 'Copiado ✓';
+      trackGlobal('convite_copiado', { origem: 'menu' });
+    });
+    whats.addEventListener('click', () => trackGlobal('convite_whatsapp', { origem: 'menu' }));
+    input.addEventListener('focus', () => input.select());
+  }).catch(() => { input.value = ''; placar.textContent = 'Não foi possível carregar seu link. Tente de novo em instantes.'; });
+}
+
 // "122915/19 — 3 - Barragem"
 function rotuloAmostra(laudo) {
   const l = laudo || {};
@@ -1717,6 +1819,7 @@ function montarRelatorio(el, texto, cultura, rotulo = '') {
   chipsDiagnostico(el);
   try { barrilLiebig(el); } catch (e) { console.warn('[Solo+IA] barril:', e); }
   acoesRelatorio(el, cultura);
+  cardIndicacao(el);
 }
 
 // Site proprio (fora do Wix): barra do topo (marca, creditos, menu da conta), aviso de login e Minhas analises
@@ -1728,6 +1831,16 @@ async function iniciarConta() {
   // window.escapeHtml so e definido depois do primeiro askAuth; aqui usa a propria
   const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   document.body.classList.add('site-proprio');
+  // link de convite (/c/CODIGO vira ?convite=CODIGO no Worker): guarda 30 dias e limpa o endereco
+  let conviteNome = null;
+  const codigoUrl = new URLSearchParams(location.search).get('convite');
+  if (codigoUrl) {
+    if (/^[A-Za-z0-9]{3,20}$/.test(codigoUrl)) {
+      window.SoloiaConta.guardarConvite(codigoUrl.toUpperCase());
+      trackGlobal('convite_aberto', { codigo: codigoUrl.toUpperCase() });
+    }
+    try { history.replaceState(null, '', location.pathname + location.hash); } catch (_) {}
+  }
   // paginas de texto servidas pelo proprio site (abrem em outra aba para nao perder o formulario)
   const PAGINAS = { 'https://www.solomaisia.com.br/consentimento': '/consentimento', 'https://www.solomaisia.com.br/pdf-nativo': '/pdf-nativo' };
   document.querySelectorAll('a[href]').forEach(a => {
@@ -1922,7 +2035,7 @@ async function iniciarConta() {
       ['Zn', '0,25', 'medio'], ['Cu', '1,14', 'alto'], ['B', '0,5', 'alto'], ['Mn', '19', 'alto']].map(([sim, valor, cls]) => ({ sim, valor, cls }));
     const cta = '<button type="button" class="tour-cta" data-tour="criar">Crie sua conta e ganhe interpretações de graça</button>';
     const PAGS = [
-      `<span class="tour-selo">🎁 Interpretações grátis</span>
+      `<span class="tour-selo">🎁 ${conviteNome ? `Convite de ${escapeHtml(conviteNome.nome)}: interpretações grátis + ${textoBonus(conviteNome.bonus)}` : 'Interpretações grátis'}</span>
         <h2 id="tourTit">Interprete sua análise de solo em minutos</h2>
         <p class="tour-sub">Envie o PDF do laudo e receba o diagnóstico completo e a recomendação de calcário e adubação para a sua cultura. Para solos do RS e SC.</p>
         <ul class="tour-lista">
@@ -2004,6 +2117,20 @@ async function iniciarConta() {
       document.getElementById('btnEntrar2').addEventListener('click', () => abrirLogin());
       document.getElementById('btnTour').addEventListener('click', () => abrirTour());
     }
+    // veio por um link de convite: faixa "Fulano te convidou" (e o selo da apresentacao)
+    const codConvite = window.SoloiaConta.conviteGuardado();
+    if (codConvite) window.SoloiaConta.conviteInfo(codConvite).then(info => {
+      if (!info?.ok) { window.SoloiaConta.esquecerConvite(); return; }
+      conviteNome = { nome: info.nome, bonus: info.bonus };
+      const faixa = document.createElement('div');
+      faixa.className = 'convite-faixa';
+      faixa.innerHTML = `<span>🎁 <strong>${escapeHtml(info.nome)}</strong> te convidou: crie sua conta e ganhe interpretações grátis + ${textoBonus(info.bonus)}.</span>
+        <button type="button" id="conviteCriar">Criar conta</button>`;
+      document.getElementById('hero')?.before(faixa);
+      faixa.querySelector('#conviteCriar').addEventListener('click', () => abrirLogin('criar'));
+      const tm = document.getElementById('tourModal');
+      if (tm && !tm.hidden && tm.dataset.pag === '0') abrirTour(0);
+    }).catch(() => {});
     // primeira visita sem conta: abre a apresentacao (nao abre na volta do login, compra ou troca de senha)
     let viu = false;
     try { viu = localStorage.getItem('soloia:tour') === '1'; } catch (_) {}
@@ -2033,6 +2160,7 @@ async function iniciarConta() {
           <div class="topo-menu-cab">${auth.nome ? `<strong>${escapeHtml(auth.nome)}</strong>` : ''}<span>${escapeHtml(auth.email || '')}</span></div>
           <button type="button" role="menuitem" data-acao="historico">Minhas análises</button>
           <a role="menuitem" href="${LINK_CREDITOS}" target="_top" rel="noopener">Comprar créditos</a>
+          <button type="button" role="menuitem" data-acao="indicar">🎁 Indique e ganhe</button>
           <button type="button" role="menuitem" data-acao="nova">Nova análise</button>
           <hr>
           <button type="button" role="menuitem" data-acao="sair" class="sair">Sair</button>
@@ -2040,6 +2168,23 @@ async function iniciarConta() {
       </div>
     </div>`;
   renderCreditos(auth.creditos);
+  // conta nova vinda de convite: aplica o bonus (o banco confere prazo, conta nova e uso unico).
+  // Se o saldo inicial ainda nao existir, da erro e tenta de novo na proxima visita.
+  const codConvite = window.SoloiaConta.conviteGuardado();
+  if (codConvite || auth.novo) {
+    window.SoloiaConta.aplicarConvite(codConvite).then(r => {
+      if (!r) return;
+      if (!r.ok) { if (r.motivo !== 'sem_login') window.SoloiaConta.esquecerConvite(); return; }
+      window.SoloiaConta.esquecerConvite();
+      renderCreditos(r.creditos);
+      trackGlobal('convite_aplicado', { bonus: r.bonus });
+      const faixa = document.createElement('div');
+      faixa.className = 'convite-faixa';
+      faixa.innerHTML = `<span>🎁 Convite de <strong>${escapeHtml(r.nome || '')}</strong> aplicado: <strong>+${Number(r.bonus)} créditos</strong> na sua conta!</span>`;
+      document.getElementById('hero')?.before(faixa);
+      setTimeout(() => faixa.remove(), 12000);
+    }).catch(() => {});
+  }
   // volta do e-mail "Esqueci minha senha": pede a senha nova
   if (new URLSearchParams(location.search).get('nova-senha')) {
     try { history.replaceState(null, '', location.pathname); } catch (_) {}
@@ -2096,6 +2241,7 @@ async function iniciarConta() {
     if (acao === 'sair') window.SoloiaConta.sair();
     else if (acao === 'historico') abrirLista();
     else if (acao === 'nova') location.href = './';
+    else if (acao === 'indicar') abrirIndicacao();
   });
 
   const fmt = iso => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
