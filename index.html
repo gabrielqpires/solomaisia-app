@@ -1772,9 +1772,12 @@ function abrirIndicacao() {
     copiar.disabled = false;
     whats.href = whatsConvite(c.codigo);
     whats.removeAttribute('aria-disabled');
-    placar.textContent = c.convidados
-      ? `${c.convidados} ${c.convidados === 1 ? 'colega entrou' : 'colegas entraram'} pelo seu link · você ganhou ${Number(c.creditos_ganhos || 0).toLocaleString('pt-BR')} créditos`
-      : 'Ninguém entrou pelo seu link ainda. Que tal enviar para quem também pode querer usar?';
+    // premio de quem indicou so sai na primeira analise do convidado: explica o "0 creditos" de quem so criou a conta
+    const pend = Number(c.pendentes ?? Math.max(0, (c.convidados || 0) - (c.premiados || 0)));
+    const partes = [];
+    if (c.premiados) partes.push(`${c.premiados === 1 ? '1 colega já fez' : c.premiados + ' colegas já fizeram'} a primeira análise: você ganhou ${Number(c.creditos_ganhos || 0).toLocaleString('pt-BR')} créditos.`);
+    if (pend) partes.push(`${pend === 1 ? '1 colega criou a conta pelo seu link, mas ainda não fez' : pend + ' colegas criaram a conta pelo seu link, mas ainda não fizeram'} a primeira análise. Quando ${pend === 1 ? 'fizer' : 'fizerem'}, você ganha 48 créditos${pend > 1 ? ' por colega' : ''}. Vale mandar uma mensagem lembrando de testar.`);
+    placar.textContent = partes.length ? partes.join(' ') : 'Ninguém entrou pelo seu link ainda. Que tal enviar para quem também pode querer usar?';
     copiar.addEventListener('click', async () => {
       await copiarTexto(input.value);
       copiar.textContent = 'Copiado ✓';
