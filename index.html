@@ -101,6 +101,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   /* Laudo ja enviado (mesmo PDF): abrir o salvo em vez de ler de novo */
   .repetido{background:#0c1a33;border:1px solid #2a3d63;border-radius:12px;padding:12px 14px;text-align:left;line-height:1.5;color:#e9efff}
   .repetido-acoes{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .repetido-ler{display:block;margin:10px 0 0 auto;padding:0;background:none;box-shadow:none;border:0;color:#5a6b86;font-size:11px;font-weight:400;text-decoration:underline;cursor:pointer}
+  .repetido-ler:hover{color:#8ea5c8;background:none}
   /* Barril de Liebig no topo do Diagnostico */
   .barril{margin:6px 0 16px;background:#0c1a33;border:1px solid #1f3152;border-radius:12px;padding:12px 12px 10px}
   .barril-tit{font-size:13px;color:var(--muted);margin:0 0 2px}
@@ -1138,7 +1140,7 @@ let reuso = null;
 // PDF que o usuario mandou ler de novo mesmo ja tendo enviado (nao pergunta outra vez)
 let lerMesmoAssim = null;
 
-// Mesmo PDF ja enviado: oferece abrir o laudo salvo (sem ler de novo) em vez de gastar outra leitura
+// Mesmo PDF ja enviado: oferece usar a leitura salva (sem ler de novo); ler de novo fica so num link discreto
 function oferecerRepetido(rep, f, culturaId) {
   const total = rep.total_amostras || 1;
   const feitas = new Set((rep.interpretacoes || []).map(x => x.amostra_indice).filter(Number.isInteger)).size;
@@ -1147,11 +1149,12 @@ function oferecerRepetido(rep, f, culturaId) {
   try { dia = new Date(rep.criado_em).toLocaleDateString('pt-BR'); } catch (_) {}
   trackEvent('laudo_repetido_detectado', { amostras: total, feitas });
   const acao = faltam > 0
-    ? '<button type="button" class="botao-entrar" id="repAbrir">Abrir sem ler de novo</button>'
+    ? `<button type="button" class="botao-entrar" id="repAbrir">Usar a leitura de antes${total > 1 ? ` e interpretar ${faltam === 1 ? 'a amostra que falta' : 'as ' + faltam + ' amostras que faltam'}` : ''}</button>`
     : (window.SoloiaAbrirLista ? '<button type="button" class="botao-entrar" id="repVer">Ver em Minhas análises</button>' : '');
   avisarForm(`<div class="repetido"><div>📄 <strong>Você já enviou este laudo</strong>${dia ? ' em ' + dia : ''}${total > 1 ? ` (${total} amostras, ${feitas} já ${feitas === 1 ? 'interpretada' : 'interpretadas'})` : ''}.
-      ${faltam > 0 ? 'Ele está salvo em Minhas análises: dá para abrir e interpretar sem ler o PDF de novo.' : 'Todas as amostras dele já foram interpretadas.'}</div>
-    <div class="repetido-acoes">${acao}<button type="button" class="botao-link" id="repLer">Ler de novo mesmo assim</button></div></div>`);
+      ${faltam > 0 ? 'Não precisa ler o PDF de novo: a leitura ficou salva e você usa ela para fazer novas interpretações.' : 'Todas as amostras dele já foram interpretadas.'}</div>
+    <div class="repetido-acoes">${acao}</div>
+    <button type="button" class="repetido-ler" id="repLer">ler o PDF de novo</button></div>`);
   document.getElementById('repAbrir')?.addEventListener('click', async ev => {
     ev.target.disabled = true;
     ev.target.textContent = 'Abrindo…';
